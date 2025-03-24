@@ -1,7 +1,11 @@
-# Vela Research Template Repository
+# LLM-Powered and Reasoning-Based Investment Decision Framework
 
 ## Overview
-This repository provides a structured template for research interns to conduct ML/AI research efficiently. The codebase is organized to support interaction with various LLM providers (OpenAI, Anthropic, Google Gemini) while maintaining clean code organization and best practices.
+This repository implements a novel, explainable investment decision framework that leverages LLM reasoning capabilities and automated logic-based systems to evaluate early-stage startups. The objective is to surpass the random chance of successful startup selection by 10× while ensuring the process remains transparent, editable, and grounded in natural language.
+
+Traditional ML models, while high-performing, often operate as rigid black boxes with limited interpretability. Conversely, LLMs are flexible and expressive but struggle with precise statistical inference. This project bridges that gap by using LLM-generated reasoning logs—derived from a dataset of successful and failed founders—as the foundation for constructing structured, verifiable investment heuristics. These heuristics are then transformed into interpretable rule-based systems that can be reviewed, adjusted, and improved by human experts.
+
+The resulting decision policies are not only explainable and auditable, but also modular—each version, whether auto-generated or expert-edited, can be backtested against historical data to evaluate precision. This framework introduces a human-in-the-loop approach to investment modelling that combines the power of LLM reasoning with the rigour of automated logic, and lays the foundation for a new class of interpretable decision tools for venture capital.
 
 ## Getting Started
 
