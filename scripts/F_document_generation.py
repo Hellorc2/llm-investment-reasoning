@@ -6,13 +6,10 @@ from typing import List
 from llms.openai import get_llm_response
 
 
-def generate_logical_criteria_doc() -> str:
+def generate_logical_criteria_doc() -> None:
     """
     Reads if...then... statements from logical_statements.txt and generates an organized document
-    outlining logical criteria for startup success.
-    
-    Returns:
-        A structured document organizing the logical criteria
+    outlining logical criteria for startup success. Writes the result to policy.txt.
     """
     # Read statements from file
     with open('logical_statements.txt', 'r') as f:
@@ -30,4 +27,8 @@ criteria for startup success/failure. Group related criteria together, eliminate
 and present the information in a clear, hierarchical structure with sections and subsections.
 """
 
-    return get_llm_response(system_prompt, user_prompt)
+    result = get_llm_response(system_prompt, user_prompt)
+    
+    # Write result to policy.txt
+    with open('policy.txt', 'w') as f:
+        f.write(result)
