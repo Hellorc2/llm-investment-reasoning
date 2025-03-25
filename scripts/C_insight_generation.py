@@ -30,6 +30,7 @@ def analyze_founder(founder_profile: str, success: bool) -> str:
         Clearly explain the most important reasons why this startup {success_verb}."""
     
     return get_llm_response(system_prompt, user_prompt)
+    
 
 
 def save_result(timestamp: str, result: str) -> None:
@@ -52,16 +53,7 @@ def save_result(timestamp: str, result: str) -> None:
         f.write("\n")
 
 
-founder_data = get_n_filtered_rows(1, ['cleaned_founder_linkedin_data', 'success'])
-result = analyze_founder(founder_data['cleaned_founder_linkedin_data'].iloc[0], founder_data['success'].iloc[0])
 
-# Create a timestamp for the session
-timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-# Save the result
-save_result(timestamp, result)
-
-print(result)
 
 
 

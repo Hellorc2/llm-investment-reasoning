@@ -1,5 +1,6 @@
-openai>=1.0.0
-python-dotenv>=0.19.0
+openai>=1.12.0
+python-dotenv>=1.0.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
-pandas>=2.0.0
+pandas>=2.2.0
+pyDatalog>=0.17.1

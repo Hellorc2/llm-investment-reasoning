@@ -26,3 +26,25 @@ def get_llm_response(system_prompt: str, user_prompt: str) -> str:
     )
     return response.choices[0].message.content
 
+def get_llm_response_with_history(system_prompt: str, conversation_history: list[dict[str, str]]) -> str:
+    """
+    Get a response from the OpenAI API, including the full conversation history.
+    
+    Args:
+        system_prompt: The system prompt that sets the context
+        conversation_history: List of message dictionaries with 'role' and 'content' keys,
+                            representing the back-and-forth conversation between user and assistant
+        
+    Returns:
+        The model's response as a string
+    """
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(conversation_history)
+    
+    response = openai_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        stream=False
+    )
+    return response.choices[0].message.content
+
