@@ -1,72 +1,31 @@
-# Guidelines for Startup Success and Failure Prediction
+HIGH LIKELIHOOD OF SUCCESS RULES:
+1. Category: Founder's Industry Experience  
+   IF [founder has extensive experience in a relevant industry] AND [proven track record of prior success] THEN likelihood_of_success = HIGH  
 
-This document outlines the logical criteria that can be used to predict the success or failure of a startup. The criteria are organized into relevant categories and include various factors that contribute to a startup’s potential success or risk of failure.
+2. Category: Technical Expertise  
+   IF [founder has strong technical mastery] AND [experience in software development or relevant technical domain] THEN likelihood_of_success = HIGH  
 
-## 1. Founder Experience and Expertise
+3. Category: Entrepreneurial Background  
+   IF [founder has entrepreneurial experience] AND [has co-founded or successfully launched previous startups] THEN likelihood_of_success = HIGH  
 
-### 1.1 Industry Experience
-- If the founder has relevant industry experience, then they are more likely to create a product that effectively addresses real-world problems.
-- If the founder has deep industry expertise (e.g., in biotechnology, pharmaceuticals, or software development), then the startup is more likely to navigate complexities and bring a product to market successfully.
+4. Category: Strong Network  
+   IF [founder maintains a robust professional network] AND [connected in relevant industries or sectors] THEN likelihood_of_success = HIGH  
 
-### 1.2 Technical and Entrepreneurial Skills
-- If the founder possesses strong technical mastery (in relevant fields such as software development or biotechnology), then they can develop and optimize the product effectively, maintaining user satisfaction and retention.
-- If the founder has co-founded a previous startup or has extensive entrepreneurial experience, then they are likely to navigate challenges effectively and drive toward profitability.
+5. Category: Adaptability and Innovation  
+   IF [founder demonstrates adaptability to market trends] AND [capability to innovate based on user feedback] THEN likelihood_of_success = HIGH  
 
-### 1.3 Leadership and Management
-- If the founder possesses demonstrated leadership skills, then they can effectively inspire and motivate their team, fostering a positive culture and enhancing team performance.
-- If the founder has held leadership roles in reputable organizations, then they are likely to possess capabilities essential for driving research initiatives and managing operations effectively.
+LOW LIKELIHOOD OF SUCCESS RULES:
+6. Category: Lack of Relevant Experience  
+   IF [founder lacks industry experience] AND [has no previous startup involvement] THEN likelihood_of_success = LOW  
 
-## 2. Educational Background
+7. Category: Weak Leadership Skills  
+   IF [founder shows poor leadership abilities] AND [struggles to motivate or manage teams] THEN likelihood_of_success = LOW  
 
-### 2.1 Academic Credentials
-- If the founder has a strong educational background, particularly a PhD in a relevant scientific field, then they are more likely to lead a successful startup due to their expertise.
-- If the founder maintains a strong academic foundation, then the startup is likely to benefit from insights into research methodologies and critical thinking.
+8. Category: Insufficient Market Understanding  
+   IF [founder does not understand market needs] AND [fails to identify customer demands] THEN likelihood_of_success = LOW  
 
-### 2.2 Lifelong Learning
-- If the founder demonstrates a commitment to continuous learning, then the startup is likely to adapt quickly and innovate in line with changing market conditions.
+9. Category: Limited Network  
+   IF [founder has a weak professional network] AND [no access to funding or mentorship opportunities] THEN likelihood_of_success = LOW  
 
-## 3. Networking and Connections
-
-### 3.1 Professional Network
-- If the founder has a robust professional network built from previous roles, then the startup is more likely to gain access to mentorship, strategic partnerships, and potential investors.
-- If the founder has established strong networks in academia and the relevant industry, then the startup is likely to access collaboration opportunities, funding, and insights crucial for scaling.
-
-### 3.2 Strategic Partnerships
-- If the startup leverages the founder's existing relationships, including those in specific sectors (like biotechnology or technology), then it is better positioned to secure funding and form strategic partnerships.
-
-## 4. Adaptability and Market Awareness
-
-### 4.1 Understanding and Navigating Market Trends
-- If the founder understands market trends and demands, then the startup is more likely to develop innovative products that meet current and future needs.
-- If the founder has demonstrated adaptability to market trends, then they are better positioned to evolve with the rapidly changing industry and enhance startup success.
-
-### 4.2 User Engagement and Product Development
-- If the founder understands user engagement strategies from previous experiences, then they can create compelling user experiences that are vital for success in their sector.
-- If the startup idea addresses a timely need in a rapidly evolving market, then it will enhance the chances of achieving adoption and success.
-
-## 5. Innovation and Research Capability
-
-### 5.1 Research and Development Focus
-- If the founder has a strong focus on research and development, then the startup is better positioned to innovate and address pressing challenges within their field.
-- If the founder illustrates innovation and vision for identifying unmet needs in the market, then the startup is more likely to develop successful and forward-thinking solutions.
-
-### 5.2 Evidence-Based Practices
-- If the founder has a pedigree of research and innovation, then the startup is likely to provide high-quality, research-backed products or services that differentiate them in the market.
-
-## 6. Operational Management and Execution
-
-### 6.1 Technical Skills and Operational Insight
-- If the founder possesses practical technical skills from a software development background, then the startup is more likely to manage the product lifecycle effectively.
-- If the founder has experience in operational management, then they can effectively navigate challenges related to resources, team coordination, and product development.
-
-### 6.2 Track Record of Execution
-- If the founder has a track record of execution in previous ventures, then they are more likely to bring ideas to fruition quickly and efficiently within a new startup context.
-- If the timing of the product launch aligns with market trends, then the startup is more likely to thrive in a competitive landscape.
-
-## 7. Confidence and Credibility
-
-### 7.1 Investor and Stakeholder Confidence
-- If the founder has a proven track record in the relevant industry, then the startup is more likely to gain credibility with investors, customers, and employees.
-- If the startup addresses critical needs and demonstrates the founder's capability, then stakeholders are more likely to invest and engage positively with the startup.
-
-By assessing these criteria, investors, analysts, and entrepreneurs can gain valuable insights into the potential success or challenges faced by a startup.
+10. Category: Poor Timing and Execution  
+   IF [product launch timing is misaligned with market trends] AND [lack of effective execution strategy] THEN likelihood_of_success = LOW  

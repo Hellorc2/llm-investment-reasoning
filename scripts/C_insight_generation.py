@@ -2,20 +2,19 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from llms.openai import get_llm_response
 from core import settings
 from datetime import datetime
 from data_utils import founder_df, get_n_filtered_rows
 from typing import List, Tuple
 
-
-def analyze_founder(founder_profile: str, success: bool) -> str:
+def analyze_founder(founder_profile: str, success: bool, model: str = "openai") -> str:
     """
     Analyze a founder's profile and explain why their startup succeeded or failed.
     
     Args:
         founder_profile: The founder's background and startup idea
         success: Whether the startup was successful or not
+        model: The LLM model to use ("openai" or "deepseek")
         
     Returns:
         A detailed explanation of why the startup succeeded or failed
@@ -29,6 +28,11 @@ def analyze_founder(founder_profile: str, success: bool) -> str:
         This startup was eventually {success_text}.
         Clearly explain the most important reasons why this startup {success_verb}."""
     
+    if model == "openai":
+        from llms.openai import get_llm_response
+    else:
+        from llms.deepseek import get_llm_response
+        
     return get_llm_response(system_prompt, user_prompt)
     
 

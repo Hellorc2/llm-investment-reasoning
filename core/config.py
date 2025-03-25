@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
     SERP_VELA_KEY: str
     SERP_VELA_URL: str
+    DEEPSEEK_API_KEY: str
     # Add your environment variables here and add them to the .env file
 
     model_config = SettingsConfigDict(

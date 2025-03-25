@@ -7,13 +7,13 @@ from C_insight_generation import analyze_founder, save_result
 from Ea_llm_reasoning import analyze_insights
 from F_document_generation import generate_logical_criteria_doc
 from datetime import datetime
-from data_utils import founder_df, get_n_filtered_rows
+from data_utils import founder_df, get_n_filtered_rows, get_n_random_rows_and_split
 from typing import List, Tuple
 
 
 def main():
     # Get a random founder's data
-    founder_data = get_n_filtered_rows(10, ['founder_name', 'cleaned_founder_linkedin_data', 'success'])
+    founder_data = get_n_random_rows_and_split(50, ['founder_name', 'cleaned_founder_linkedin_data', 'success'])
     
     # Create empty dataframe to store results
     results_df = pd.DataFrame(columns=['founder', 'insight', 'success'])
@@ -40,9 +40,6 @@ def main():
     
     # Save the results to a CSV file
     results_df.to_csv('founder_insights.csv', index=False)
-    
-    # Generate documentation
-    generate_documentation(results_df)
 
 def insight_analysis():
     analysis_results = analyze_insights()
@@ -51,5 +48,4 @@ def insight_analysis():
 def generate_document():
     document = generate_logical_criteria_doc()
     print(document)
-
 generate_document()
