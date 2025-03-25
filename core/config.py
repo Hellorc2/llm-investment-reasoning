@@ -4,7 +4,6 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-
 class Settings(BaseSettings):
     """Class to store all the settings of the application."""
 
