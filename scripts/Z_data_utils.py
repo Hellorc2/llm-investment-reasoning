@@ -2,34 +2,29 @@ import pandas as pd
 from typing import List
 import os
 
-# Get the parent directory path
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# Read the founder scores CSV file
-try:
-    founder_df = pd.read_csv(os.path.join(parent_dir, 'founder_data.csv'))
-except FileNotFoundError:
-    print("Error: founder_data.csv file not found in the parent directory")
-    founder_df = pd.DataFrame()
-except Exception as e:
-    print(f"Error reading CSV file: {str(e)}")
-    founder_df = pd.DataFrame()
-
-def get_n_filtered_rows(n: int, columns: List[str]) -> pd.DataFrame:
+def get_n_filtered_rows(n: int, columns: List[str], base_csv: str = 'founder_data.csv') -> pd.DataFrame:
     """
     Returns the first n rows of founder data, including only the specified columns
     
     Args:
         n: Number of rows to return
         columns: List of column names to include
+        base_csv: Path to the base CSV file (default: founder_data.csv)
             
     Returns:
         DataFrame containing the first n rows with only the specified columns
         Or error message if any requested column does not exist
     """
-    # Check if DataFrame is empty
-    if founder_df.empty:
-        return "Error: No data available. Please check if the CSV file exists and contains data."
+    # Get the parent directory path
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    # Read the founder scores CSV file
+    try:
+        founder_df = pd.read_csv(os.path.join(parent_dir, base_csv))
+    except FileNotFoundError:
+        return f"Error: {base_csv} file not found in the parent directory"
+    except Exception as e:
+        return f"Error reading CSV file: {str(e)}"
             
     # Check if all requested columns exist in the data
     invalid_columns = [col for col in columns if col not in founder_df.columns]
@@ -40,7 +35,10 @@ def get_n_filtered_rows(n: int, columns: List[str]) -> pd.DataFrame:
     # Extract first n rows with specified columns
     return founder_df[columns].head(n)
 
-def get_n_random_rows_and_split(num_success: int, num_failure: int, columns: List[str], output_selected: str = "selected_rows.csv", output_remaining: str = "remaining_rows.csv") -> pd.DataFrame:
+def get_n_random_rows_and_split(num_success: int, num_failure: int, columns: List[str], 
+                              base_csv: str = 'founder_data.csv',
+                              output_selected: str = "selected_rows.csv", 
+                              output_remaining: str = "remaining_rows.csv") -> pd.DataFrame:
     """
     Returns randomly selected rows of founder data with specified columns, split by success/failure,
     and saves the remaining data to CSV files
@@ -49,6 +47,7 @@ def get_n_random_rows_and_split(num_success: int, num_failure: int, columns: Lis
         num_success: Number of successful cases to randomly select
         num_failure: Number of failed cases to randomly select
         columns: List of column names to include
+        base_csv: Path to the base CSV file (default: founder_data.csv)
         output_selected: Filename for CSV containing selected rows (default: selected_rows.csv)
         output_remaining: Filename for CSV containing remaining rows (default: remaining_rows.csv)
             
@@ -56,9 +55,16 @@ def get_n_random_rows_and_split(num_success: int, num_failure: int, columns: Lis
         DataFrame containing the randomly selected rows with only the specified columns
         Or error message if any requested column does not exist
     """
-    # Check if DataFrame is empty
-    if founder_df.empty:
-        return "Error: No data available. Please check if the CSV file exists and contains data."
+    # Get the parent directory path
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    # Read the founder scores CSV file
+    try:
+        founder_df = pd.read_csv(os.path.join(parent_dir, base_csv))
+    except FileNotFoundError:
+        return f"Error: {base_csv} file not found in the parent directory"
+    except Exception as e:
+        return f"Error reading CSV file: {str(e)}"
             
     # Check if all requested columns exist in the data
     invalid_columns = [col for col in columns if col not in founder_df.columns]
@@ -92,6 +98,42 @@ def get_n_random_rows_and_split(num_success: int, num_failure: int, columns: Lis
     
     return selected_rows
 
+def count_successful_founders(base_csv: str = 'founder_data.csv') -> dict:
+    """
+    Counts the number of successful and unsuccessful founders in the dataset
+    
+    Args:
+        base_csv: Path to the base CSV file (default: founder_data.csv)
+            
+    Returns:
+        Dictionary containing counts of successful and unsuccessful founders
+        Or error message if file not found
+    """
+    # Get the parent directory path
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    # Read the founder scores CSV file
+    try:
+        founder_df = pd.read_csv(os.path.join(parent_dir, base_csv))
+    except FileNotFoundError:
+        return f"Error: {base_csv} file not found in the parent directory"
+    except Exception as e:
+        return f"Error reading CSV file: {str(e)}"
+    
+    # Count successful and unsuccessful founders
+    success_count = len(founder_df[founder_df['success'] == True])
+    failure_count = len(founder_df[founder_df['success'] == False])
+    total_count = len(founder_df)
+    
+    return {
+        'total_founders': total_count,
+        'successful_founders': success_count,
+        'unsuccessful_founders': failure_count,
+        'success_rate': f"{(success_count/total_count)*100:.2f}%"
+    }
+
 # Test the data loading and filtering
 if __name__ == "__main__":
     print(get_n_filtered_rows(5, ['cleaned_founder_linkedin_data', 'cleaned_founder_cb_data', 'success']))
+    print("\nFounder Statistics:")
+    print(count_successful_founders())

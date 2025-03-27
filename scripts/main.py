@@ -7,8 +7,10 @@ from C_insight_generation import analyze_founder, save_result
 from Ea_llm_reasoning import analyze_insights, analyze_insights_in_groups
 from F_document_generation import generate_logical_criteria_doc
 from Fb_problog_generation import generate_problog_program
+from Fc_bayesian_network import create_bayesian_network, display_bayesian_network, print_network_structure
+from Fd_GBM import train_decision_tree, get_updated_rows
 from datetime import datetime
-from Z_data_utils import founder_df, get_n_filtered_rows, get_n_random_rows_and_split
+from Z_data_utils import get_n_filtered_rows, get_n_random_rows_and_split
 from typing import List, Tuple
 
 
@@ -28,7 +30,7 @@ def main():
     
     # Analyze each founder
     for index, row in founder_data.iterrows():
-        # Combine LinkedIn and CB data for analysis
+        # Combine LinkedIn and CB data for analysisanalysis
         combined_profile = f"LinkedIn Data: {row['cleaned_founder_linkedin_data']}\n\nCrunchbase Data: {row['cleaned_founder_cb_data']}"
         result = analyze_founder(combined_profile, row['success'], model="openai")
         
@@ -73,6 +75,33 @@ def generate_program():
     program = generate_problog_program(model="deepseek")
     print(program)
 
-insight_analysis()
+def generate_bayesian_network():
+    model = create_bayesian_network()
+    print_network_structure(model)
+    display_bayesian_network(model)
+
+def generate_xgboost_model():
+    # First get and save the updated rows
+    df = get_updated_rows(columns=[
+        'professional_athlete', 'childhood_entrepreneurship', 'competitions', 'ten_thousand_hours_of_mastery',
+        'languages', 'perseverance', 'risk_tolerance', 'vision', 'adaptability', 'personal_branding',
+        'education_level', 'education_institution', 'education_field_of_study', 'education_international_experience',
+        'education_extracurricular_involvement', 'education_awards_and_honors', 'big_leadership', 'nasdaq_leadership',
+        'number_of_leadership_roles', 'being_lead_of_nonprofits', 'number_of_roles', 'number_of_companies', 'industry_achievements',
+        'big_company_experience', 'nasdaq_company_experience', 'big_tech_experience', 'google_experience', 'facebook_meta_experience',
+        'microsoft_experience', 'amazon_experience', 'apple_experience', 'career_growth', 'moving_around',
+        'international_work_experience', 'worked_at_military', 'big_tech_position', 'worked_at_consultancy', 'worked_at_bank',
+        'press_media_coverage_count', 'vc_experience', 'angel_experience', 'quant_experience',
+        'board_advisor_roles', 'tier_1_vc_experience', 'startup_experience', 'ceo_experience', 'investor_quality_prior_startup',
+        'previous_startup_funding_experience', 'ipo_experience', 'num_acquisitions', 'domain_expertise', 'skill_relevance', 'yoe'
+    ])
+    
+    # Only proceed with training if we successfully got the data
+    if df is not None:
+        train_decision_tree()
+    else:
+        print("Failed to process data. Please check the input files and columns.")
+
+generate_xgboost_model()
 
 

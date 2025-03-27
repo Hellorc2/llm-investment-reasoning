@@ -1,35 +1,42 @@
-1. IF founder has deep industry expertise in startup's domain AND prior leadership experience in relevant field THEN likelihood_of_success = 0.85  
-2. IF founder has prior successful startup experience AND strong investor network THEN likelihood_of_success = 0.82  
-3. IF founder has technical education (e.g., CS, engineering) AND technical work experience THEN likelihood_of_success = 0.80  
-4. IF founder has elite education (e.g., Ivy League, Stanford) AND relevant industry experience THEN likelihood_of_success = 0.78  
-5. IF founder has >10 years industry experience AND consistent career progression THEN likelihood_of_success = 0.75  
-6. IF founder has specialized skills matching startup needs (e.g., AI, biotech) AND research/publications in field THEN likelihood_of_success = 0.75  
-7. IF founder has prior VC/PE experience AND fundraising track record THEN likelihood_of_success = 0.73  
-8. IF founder has military/athletic leadership background AND relevant industry experience THEN likelihood_of_success = 0.70  
-9. IF founder has strong media visibility/press coverage AND industry credibility THEN likelihood_of_success = 0.68  
-10. IF founder has multiple co-founders with complementary skills THEN likelihood_of_success = 0.67  
+1. **IF** big_tech_experience **AND** ceo_experience **AND** education_level = high **THEN** likelihood_of_success = 0.85  
+2. **IF** vc_experience **AND** previous_startup_funding_experience **AND** investor_quality_prior_startup **THEN** likelihood_of_success = 0.82  
+3. **IF** nasdaq_company_experience **AND** number_of_leadership_roles > 3 **AND** education_institution = top_tier **THEN** likelihood_of_success = 0.80  
+4. **IF** domain_expertise **AND** skill_relevance **AND** yoe > 10 **THEN** likelihood_of_success = 0.78  
+5. **IF** google_experience **OR** facebook_meta_experience **AND** big_tech_position = senior **THEN** likelihood_of_success = 0.75  
+6. **IF** startup_experience **AND** num_acquisitions > 0 **AND** press_media_coverage_count > 5 **THEN** likelihood_of_success = 0.73  
+7. **IF** education_field_of_study = technical **AND** big_company_experience **AND** perseverance **THEN** likelihood_of_success = 0.70  
+8. **IF** tier_1_vc_experience **AND** board_advisor_roles > 2 **AND** vision **THEN** likelihood_of_success = 0.68  
+9. **IF** worked_at_military **AND** adaptability **AND** education_level = high **THEN** likelihood_of_success = 0.65  
+10. **IF** international_work_experience **AND** languages > 1 **AND** education_international_experience **THEN** likelihood_of_success = 0.63  
+11. **IF** ipo_experience **AND** ceo_experience **AND** nasdaq_leadership **THEN** likelihood_of_success = 0.60  
+12. **IF** quant_experience **AND** education_field_of_study = technical **AND** big_tech_experience **THEN** likelihood_of_success = 0.58  
+13. **IF** angel_experience **AND** startup_experience **AND** investor_quality_prior_startup **THEN** likelihood_of_success = 0.55  
+14. **IF** education_awards_and_honors **AND** education_extracurricular_involvement **AND** personal_branding **THEN** likelihood_of_success = 0.52  
+15. **IF** worked_at_consultancy **AND** number_of_companies > 3 **AND** career_growth **THEN** likelihood_of_success = 0.50  
 
-11. IF founder has no prior startup experience AND no relevant industry expertise THEN likelihood_of_success = 0.25  
-12. IF founder has frequent job changes (>3 roles in 5 years) AND no long-term commitments THEN likelihood_of_success = 0.28  
-13. IF founder has mismatched education (e.g., arts degree for tech startup) AND no compensating experience THEN likelihood_of_success = 0.30  
-14. IF founder has weak professional network (no investors/mentors) AND no industry connections THEN likelihood_of_success = 0.32  
-15. IF founder has multiple concurrent roles/commitments AND no full-time focus on startup THEN likelihood_of_success = 0.35  
-16. IF founder has no technical skills for tech startup AND no technical co-founder THEN likelihood_of_success = 0.20  
-17. IF founder has past startup failures AND no demonstrated learning THEN likelihood_of_success = 0.38  
-18. IF founder has unclear/unproven market demand for product THEN likelihood_of_success = 0.40  
-19. IF founder has no fundraising experience AND no financial backing THEN likelihood_of_success = 0.22  
-20. IF founder has solo founder (no team/co-founders) AND skill gaps THEN likelihood_of_success = 0.30  
+### Failure Rules (Negative Conditions)  
 
-21. IF founder has corporate background only (no startup experience) AND rigid thinking THEN likelihood_of_success = 0.45  
-22. IF founder has academic background only (no business experience) THEN likelihood_of_success = 0.42  
-23. IF founder has sales/marketing background only (no product/tech skills) THEN likelihood_of_success = 0.50  
-24. IF founder has late-career transition to entrepreneurship (>50 years old) AND industry disruption THEN likelihood_of_success = 0.48  
-25. IF founder has no online presence/social proof THEN likelihood_of_success = 0.35  
+16. **IF** moving_around **AND** number_of_roles > 5 **AND** yoe < 5 **THEN** likelihood_of_success = 0.20  
+17. **IF** education_level = low **AND** skill_relevance = no **AND** domain_expertise = no **THEN** likelihood_of_success = 0.18  
+18. **IF** startup_experience = no **AND** ceo_experience = no **AND** big_company_experience = no **THEN** likelihood_of_success = 0.15  
+19. **IF** press_media_coverage_count = 0 **AND** investor_quality_prior_startup = no **AND** previous_startup_funding_experience = no **THEN** likelihood_of_success = 0.12  
+20. **IF** education_field_of_study = unrelated **AND** big_tech_experience = no **AND** nasdaq_company_experience = no **THEN** likelihood_of_success = 0.10  
+21. **IF** number_of_companies = 0 **AND** num_acquisitions = 0 **AND** ipo_experience = no **THEN** likelihood_of_success = 0.08  
+22. **IF** worked_at_military = no **AND** adaptability = low **AND** perseverance = low **THEN** likelihood_of_success = 0.05  
+23. **IF** vc_experience = no **AND** angel_experience = no **AND** tier_1_vc_experience = no **THEN** likelihood_of_success = 0.04  
+24. **IF** number_of_leadership_roles = 0 **AND** being_lead_of_nonprofits = no **AND** nasdaq_leadership = no **THEN** likelihood_of_success = 0.03  
+25. **IF** international_work_experience = no **AND** languages = 1 **AND** education_international_experience = no **THEN** likelihood_of_success = 0.02  
+26. **IF** worked_at_consultancy = no **AND** worked_at_bank = no **AND** quant_experience = no **THEN** likelihood_of_success = 0.01  
+27. **IF** personal_branding = no **AND** press_media_coverage_count = 0 **AND** vision = unclear **THEN** likelihood_of_success = 0.10  
+28. **IF** education_extracurricular_involvement = no **AND** education_awards_and_honors = no **AND** education_level = low **THEN** likelihood_of_success = 0.07  
+29. **IF** risk_tolerance = low **AND** moving_around = yes **AND** career_growth = no **THEN** likelihood_of_success = 0.05  
+30. **IF** board_advisor_roles = 0 **AND** startup_experience = no **AND** investor_quality_prior_startup = no **THEN** likelihood_of_success = 0.03  
 
-26. IF startup operates in highly competitive market AND no differentiation THEN likelihood_of_success = 0.30  
-27. IF startup has regulatory hurdles (e.g., healthcare, fintech) AND no regulatory expertise THEN likelihood_of_success = 0.40  
-28. IF startup requires technical moat AND no technical founder THEN likelihood_of_success = 0.25  
-29. IF startup is in trending sector (e.g., AI, blockchain) AND founder is late/opportunistic THEN likelihood_of_success = 0.38  
-30. IF startup solves obscure/non-urgent problem THEN likelihood_of_success = 0.35  
+### Neutral/Mixed Rules  
 
-These rules capture the most significant and generalizable patterns from the dataset while maintaining actionable specificity. The likelihood scores reflect observed outcome frequencies from the profiles.
+31. **IF** professional_athlete **AND** perseverance **BUT** domain_expertise = no **THEN** likelihood_of_success = 0.40  
+32. **IF** childhood_entrepreneurship **AND** risk_tolerance **BUT** education_level = low **THEN** likelihood_of_success = 0.35  
+33. **IF** competitions **AND** personal_branding **BUT** skill_relevance = no **THEN** likelihood_of_success = 0.30  
+34. **IF** ten_thousand_hours_of_mastery **AND** perseverance **BUT** big_company_experience = no **THEN** likelihood_of_success = 0.25  
+35. **IF** worked_at_military **AND** adaptability **BUT** startup_experience = no **THEN** likelihood_of_success = 0.20
+

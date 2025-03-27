@@ -95,9 +95,24 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
 
         IF [condition A1] AND [condition A2] AND ... AND [condition An] THEN likelihood_of_success = [number between 0 and 1]
 
-        Note that n is the number of conditions and can be any number, but try to avoid having too few conditions. 
+        Note that n is the number of conditions and can be any number, but try to have at least 2 ANDs in each rule.
+
+        For the conditions, you are only allowed to use one of the following:
+        professional_athlete	childhood_entrepreneurship	competitions	ten_thousand_hours_of_mastery	
+        languages	perseverance	risk_tolerance	vision	adaptability	personal_branding	
+        education_level	education_institution	education_field_of_study	education_international_experience	
+        education_extracurricular_involvement	education_awards_and_honors	big_leadership	nasdaq_leadership	
+        number_of_leadership_roles	being_lead_of_nonprofits	number_of_roles	number_of_companies	industry_achievements	
+        big_company_experience	nasdaq_company_experience	big_tech_experience	google_experience	facebook_meta_experience	
+        microsoft_experience	amazon_experience	apple_experience	career_growth	moving_around	
+        international_work_experience	worked_at_military	big_tech_position	worked_at_consultancy	worked_at_bank	
+        press_media_coverage_count	vc_experience	angel_experience	quant_experience	
+        board_advisor_roles	tier_1_vc_experience	startup_experience	ceo_experience	investor_quality_prior_startup	
+        previous_startup_funding_experience
+        ipo_experience, num_acquisitions, domain_expertise, skill_relevance, yoe
         
-        Finally, limit the number of rules to around 50 actionable and generalizable conditions.
+        Finally, limit the number of rules to around 50 actionable and generalizable conditions. Make sure at least half of 
+        the rules focus on when the founder is more likely to fail.
     """
     
     if model == "openai":

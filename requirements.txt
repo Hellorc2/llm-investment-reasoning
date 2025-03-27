@@ -1,7 +1,13 @@
 openai>=1.12.0
+pandas>=2.2.0
 python-dotenv>=1.0.0
+problog>=0.3.1
+numpy>=1.20.0
+scipy>=1.7.0
+pgmpy==0.1.24
+networkx==3.2.1
+matplotlib==3.8.3
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
-pandas>=2.2.0
 pyDatalog>=0.17.1
-problog>=0.3.1
+xgboost==2.0.3

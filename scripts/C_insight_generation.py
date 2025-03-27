@@ -3,7 +3,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core import settings
-from Z_data_utils import founder_df, get_n_filtered_rows
+from Z_data_utils import get_n_filtered_rows
 from datetime import datetime
 from typing import List, Tuple
 
