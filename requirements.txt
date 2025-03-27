@@ -4,3 +4,4 @@ pydantic>=2.0.0
 pydantic-settings>=2.0.0
 pandas>=2.2.0
 pyDatalog>=0.17.1
+problog>=0.3.1

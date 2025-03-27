@@ -2,6 +2,7 @@ from openai import OpenAI
 
 from core import settings
 
+_model = "deepseek-chat"
 
 deepseek_client = OpenAI(api_key=settings.DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
 
@@ -17,7 +18,7 @@ def get_llm_response(system_prompt: str, user_prompt: str) -> str:
         The model's response as a string
     """
     response = deepseek_client.chat.completions.create(
-        model="deepseek-chat",
+        model=_model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -42,7 +43,7 @@ def get_llm_response_with_history(system_prompt: str, conversation_history: list
     messages.extend(conversation_history)
     
     response = deepseek_client.chat.completions.create(
-        model="deepseek-chat",
+        model=_model,
         messages=messages,
         stream=False
     )
