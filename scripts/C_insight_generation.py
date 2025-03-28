@@ -35,10 +35,11 @@ def analyze_founder(founder_profile: str, success: bool, model: str = "openai") 
         
     insight = get_llm_response(system_prompt, user_prompt)
     print(insight)
+    return insight
     
-    user_prompt2 = """Can you rephrase each sentence in the above insight in a more logical way? 
-    DON'T drop or add any sentences. 
     """
+    user_prompt2 = Can you rephrase each sentence in the above insight in a more logical way? 
+    DON'T drop or add any sentences. 
 
     conversation_history = [
         {"role": "user", "content": user_prompt},
@@ -48,6 +49,7 @@ def analyze_founder(founder_profile: str, success: bool, model: str = "openai") 
     
     return get_llm_response_with_history(system_prompt, conversation_history)
 
+    """
 
 def save_result(timestamp: str, result: str) -> None:
     """

@@ -7,7 +7,7 @@ from llms.openai import get_llm_response
 from typing import List, Dict
 from datetime import datetime
 
-def analyze_insights(csv_path: str = 'founder_insights.csv', model: str = "openai") -> List[Dict]:
+def analyze_insights(csv_path: str = 'founder_insights.csv', model: str = "openai", iterative: bool = False) -> List[Dict]:
     """
     Read insights from CSV and analyze patterns using LLM.
     
@@ -57,7 +57,7 @@ def analyze_insights(csv_path: str = 'founder_insights.csv', model: str = "opena
 
     return logical_statements
 
-def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: str = "openai") -> str:
+def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: str = "openai", iterative: bool = False, previous_analysis: str = "") -> str:
     """
     Read insights from CSV and analyze patterns across all insights together using LLM.
     
@@ -95,7 +95,7 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
 
         IF [condition A1] AND [condition A2] AND ... AND [condition An] THEN likelihood_of_success = [number between 0 and 1]
 
-        Note that n is the number of conditions and can be any number, but try to have around 2 ANDs in each rule.
+        Note that n is the number of conditions and can be any number, but try to have around 2 ANDs in each rule. AVOID using ORs!
 
         Also, if you think a rule is neutral (i.e. moderate probability), then don't include it.
 
@@ -115,8 +115,16 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
         .
         
         Finally,limit the number of rules to around 50 actionable and generalizable conditions. Make sure at least half of 
-        the rules focus on when the founder is more likely to fail. 
+        the rules focus on when the founder is more likely to fail.
+
     """
+
+    if iterative:
+        user_prompt += f"""You are also given your analysis on a previous set of founders, where the probabilities were adjusted based on real world data:
+
+        {previous_analysis}.
+
+        Consider these old rules as valuable hints, especially the probabilities, but don't be too rigid about them."""
     
     if model == "openai":
         from llms.openai import get_llm_response
@@ -157,7 +165,8 @@ def logical_statements_to_csv(txt_path: str = 'logical_statements.txt', model: s
 
     {combined_text}
 
-    Convert each rule into a csv row with the format successpredictor(Boolean variable 0 or 1), condition1, condition2, ..., conditionn, likelihood_of_success
+    Firstly, filter out any rules that contains ORs.
+    Then, convert each rule into a csv row with the format successpredictor(Boolean variable 0 or 1), condition1, condition2, ..., conditionn, likelihood_of_success
 
     For the conditions, you are still only allowed to use one of the following:
     professional_athlete	childhood_entrepreneurship	competitions	ten_thousand_hours_of_mastery	
