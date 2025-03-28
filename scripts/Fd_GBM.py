@@ -1,8 +1,9 @@
 import pandas as pd
 import os
 from typing import List
-from sklearn.tree import DecisionTreeClassifier, plot_tree
+import xgboost as xgb
 import matplotlib.pyplot as plt
+from dtreeviz import dtreeviz
 
 def get_updated_rows(base_csv: str = 'founder_data.csv', 
                     scores_csv: str = 'founder_scores_3_25_reasearch.csv',
@@ -57,10 +58,10 @@ def get_updated_rows(base_csv: str = 'founder_data.csv',
 
 def visualize_tree(model, feature_names=None):
     """
-    Visualizes the model's feature importance and decision boundaries using matplotlib
+    Visualizes the model's feature importance using matplotlib
     
     Args:
-        model: Trained Decision Tree model
+        model: Trained XGBoost model
         feature_names: List of feature names (optional)
     """
     try:
@@ -75,7 +76,7 @@ def visualize_tree(model, feature_names=None):
         plt.barh(range(len(importance)), importance['importance'])
         plt.yticks(range(len(importance)), importance['feature'])
         plt.xlabel('Feature Importance')
-        plt.title('Decision Tree Feature Importance')
+        plt.title('XGBoost Feature Importance')
         plt.tight_layout()
         plt.show()
         
@@ -86,56 +87,57 @@ def visualize_tree(model, feature_names=None):
     except Exception as e:
         print(f"Error visualizing tree: {str(e)}")
 
-def print_tree_structure(model, feature_names=None):
+def print_tree_structure(model, feature_names=None, X_train=None, y_train=None):
     """
-    Creates a visual plot of the decision tree
+    Creates a visual plot of the XGBoost trees
     
     Args:
-        model: Trained Decision Tree model
+        model: Trained XGBoost model
         feature_names: List of feature names (optional)
+        X_train: Training features
+        y_train: Training labels
     """
     try:
-        # Create a figure with a larger size but more compact layout
-        plt.figure(figsize=(15, 8))
-        
-        # Plot the tree with more compact settings
-        plot_tree(model, feature_names=feature_names, filled=True, rounded=True, 
-                 class_names=['Failed', 'Successful'], fontsize=8,
-                 proportion=True)  # Show proportions instead of counts
-        
-        # Add a title
-        plt.title("Decision Tree Structure")
-        
-        # Adjust layout to prevent text cutoff
-        plt.tight_layout()
-        
-        # Show the plot
-        plt.show()
-        
-        # Print text representation of the tree structure
-        print("\nTree Structure Summary:")
-        print("----------------------")
-        print("Top 5 Most Important Splits:")
+        # Get feature importance
         feature_importance = pd.DataFrame({
             'feature': feature_names,
             'importance': model.feature_importances_
         }).sort_values('importance', ascending=False)
         
-        for idx, row in feature_importance.head(5).iterrows():
+        # Create a bar plot of top 10 features
+        plt.figure(figsize=(12, 6))
+        plt.barh(range(10), feature_importance['importance'].head(10))
+        plt.yticks(range(10), feature_importance['feature'].head(10))
+        plt.xlabel('Feature Importance')
+        plt.title('Top 10 Most Important Features')
+        plt.tight_layout()
+        plt.show()
+        
+        # Print detailed feature importance
+        print("\nTree Structure Summary:")
+        print("----------------------")
+        print("Top 10 Most Important Features:")
+        for idx, row in feature_importance.head(10).iterrows():
             print(f"\n{row['feature']} (Importance: {row['importance']:.3f})")
+            
+        # Print the first tree's structure in text format
+        print("\nFirst Tree Structure:")
+        print("----------------------")
+        tree = model.get_booster().trees_to_dataframe()
+        print(tree.head(10))  # Show first 10 nodes of the tree
             
     except Exception as e:
         print(f"Error plotting tree structure: {str(e)}")
 
 def train_decision_tree(data_csv: str = 'founder_data_ml.csv'):
     """
-    Reads founder data and trains a Decision Tree model for prediction
+    Reads founder data and trains an XGBoost model for prediction
     
     Args:
         data_csv: Path to the processed data CSV file (default: founder_data_ml.csv)
         
     Returns:
-        Trained Decision Tree model and evaluation metrics
+        Trained XGBoost model and evaluation metrics
     """
     # Get the parent directory path
     parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -157,20 +159,37 @@ def train_decision_tree(data_csv: str = 'founder_data_ml.csv'):
             label_encoders[column] = LabelEncoder()
             X[column] = label_encoders[column].fit_transform(X[column].astype(str))
         
+        # Fill NaN values with appropriate defaults
+        # For numeric columns, use median
+        numeric_columns = X.select_dtypes(include=['int64', 'float64']).columns
+        X[numeric_columns] = X[numeric_columns].fillna(X[numeric_columns].median())
+        
+        # For categorical columns, use mode
+        categorical_columns = X.select_dtypes(include=['object']).columns
+        for column in categorical_columns:
+            mode_value = X[column].mode()
+            if not mode_value.empty:
+                X[column] = X[column].fillna(mode_value.iloc[0])
+            else:
+                # If all values are NaN, fill with a default value
+                X[column] = X[column].fillna('Unknown')
+        
         # Split data into train and test sets
         from sklearn.model_selection import train_test_split
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         
-        # Train Decision Tree model
-        model = DecisionTreeClassifier(
+        # Train XGBoost model
+        model = xgb.XGBClassifier(
             max_depth=5,
+            n_estimators=100,
+            learning_rate=0.1,
             random_state=42
         )
         
         model.fit(X_train, y_train)
         
-        # Print the actual tree depth
-        print(f"\nActual Tree Depth: {model.get_depth()}")
+        # Print the number of trees
+        print(f"\nNumber of Trees: {model.n_estimators}")
         
         # Make predictions and evaluate
         from sklearn.metrics import accuracy_score, classification_report
@@ -188,7 +207,7 @@ def train_decision_tree(data_csv: str = 'founder_data_ml.csv'):
         
         # Print tree structure
         print("\nPrinting tree structure...")
-        print_tree_structure(model, feature_names=X.columns.tolist())
+        print_tree_structure(model, feature_names=X.columns.tolist(), X_train=X_train, y_train=y_train)
         
         return model
         
