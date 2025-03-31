@@ -93,11 +93,11 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
 
     Based on these reflections, clearly derive a concise set of logical rules in the structured format below:
 
-        IF [condition A1] AND [condition A2] AND ... AND [condition An] THEN likelihood_of_success = [number between 0 and 1]
+        IF [condition A1] AND [condition A2] AND ... AND [condition An] THEN probability_of_success/failure = [number between 0 and 1]
 
         Note that n is the number of conditions and can be any number, but try to have around 2 ANDs in each rule. AVOID using ORs!
 
-        Also, if you think a rule is neutral (i.e. moderate probability), then don't include it.
+        Also, if you think a rule is neutral (e.g. probability between 0.4 and 0.6), then don't include it.
 
         For the conditions, you are only allowed to use one of the following:
         professional_athlete	childhood_entrepreneurship	competitions	ten_thousand_hours_of_mastery	
@@ -114,8 +114,8 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
         ipo_experience, num_acquisitions, domain_expertise, skill_relevance, yoe   
         .
         
-        Finally,limit the number of rules to around 50 actionable and generalizable conditions. Make sure at least half of 
-        the rules focus on when the founder is more likely to fail.
+        Finally,limit the number of rules to between 20 and 25 actionable and generalizable conditions. Make sure at least 10 of 
+        the rules focus on when the founder is more likely to succeed.
 
     """
 
@@ -124,7 +124,8 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
 
         {previous_analysis}.
 
-        Consider these old rules as valuable hints, especially the probabilities, but don't be too rigid about them."""
+        Consider these old rules as valuable hints, especially the probabilities, but you are STRONGLY encouraged to delete or modify them, or to add new ones
+        to bring the total number of rules to between 20 and 25."""
     
     if model == "openai":
         from llms.openai import get_llm_response
@@ -138,18 +139,17 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
     
     return response
 
-def logical_statements_to_csv(txt_path: str = 'logical_statements.txt', model: str = "openai") -> str:
+def logical_statements_preprocess(txt_path: str = 'logical_statements.txt', model: str = "openai") -> str:
     """
-    Read insights from CSV and analyze patterns across all insights together using LLM.
+    Read logical statements from a text file and preprocess them using LLM.
     
     Args:
-        csv_path: Path to the CSV file containing founder insights
-        model: The LLM model to use ("openai" or "deepseek")
+        txt_path (str): Path to the input text file containing logical statements
+        model (str): The LLM model to use ("openai" or "deepseek")
         
     Returns:
-        A comprehensive analysis of all insights combined
+        str: The preprocessed logical statements
     """
-    # Read the insights CSV
     # Read the logical statements from file
 
     with open(txt_path, 'r') as f:
@@ -181,6 +181,13 @@ def logical_statements_to_csv(txt_path: str = 'logical_statements.txt', model: s
     board_advisor_roles	tier_1_vc_experience	startup_experience	ceo_experience	investor_quality_prior_startup	
     previous_startup_funding_experience
     ipo_experience, num_acquisitions, domain_expertise, skill_relevance, yoe   
+
+    DO NOT include comparatives in the conditions such as education_level = 'high'. If you see a condition like this with positive characteristics,
+    remove everything including and after the comparator; if you see a condition like this with negative characteristics, do the same but add not_ in
+    front of the condition.
+
+    DOUBLE CHECK that all the conditions appear in the list of allowed conditions! If not, delete the rule.
+    
 
     return me only the csv rows, no other text.
 

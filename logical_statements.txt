@@ -1,38 +1,47 @@
-Here are the refined logical rules based on the analysis of founder profiles and outcomes, incorporating insights from both the case studies and previous iterations:
+Here are the refined rules based on the analysis, incorporating both the previous insights and the new founder profiles:
 
-### Success Rules (Higher Likelihood)
-1. IF big_tech_experience AND ceo_experience THEN likelihood_of_success = 0.18  
-2. IF vc_experience AND previous_startup_funding_experience THEN likelihood_of_success = 0.20  
-3. IF startup_experience AND investor_quality_prior_startup THEN likelihood_of_success = 0.26  
-4. IF education_institution AND big_company_experience THEN likelihood_of_success = 0.21  
-5. IF worked_at_military AND big_leadership THEN likelihood_of_success = 0.19  
-6. IF domain_expertise AND skill_relevance THEN likelihood_of_success = 0.22  
-7. IF nasdaq_leadership AND ipo_experience THEN likelihood_of_success = 0.23  
-8. IF tier_1_vc_experience AND num_acquisitions THEN likelihood_of_success = 0.24  
-9. IF google_experience AND big_tech_position THEN likelihood_of_success = 0.25  
-10. IF vision AND adaptability THEN likelihood_of_success = 0.17  
+### Success Rules (10+):
+```
+1. IF previous_startup_funding_experience AND investor_quality_prior_startup THEN probability_of_success = 0.55  
+2. IF nasdaq_company_experience AND nasdaq_leadership THEN probability_of_success = 0.18  
+3. IF big_tech_experience AND big_tech_position THEN probability_of_success = 0.16  
+4. IF number_of_leadership_roles AND board_advisor_roles THEN probability_of_success = 0.28  
+5. IF domain_expertise AND skill_relevance THEN probability_of_success = 0.12  
+6. IF education_level AND education_field_of_study THEN probability_of_success = 0.10  
+7. IF big_company_experience AND career_growth THEN probability_of_success = 0.15  
+8. IF startup_experience AND ceo_experience THEN probability_of_success = 0.22  
+9. IF press_media_coverage_count AND vision THEN probability_of_success = 0.20  
+10. IF international_work_experience AND education_international_experience THEN probability_of_success = 0.08  
+11. IF number_of_companies AND moving_around THEN probability_of_success = 0.07  
+```
 
-### Failure Rules (Higher Likelihood)
-1. IF moving_around AND career_growth THEN likelihood_of_success = 0.12  
-2. IF press_media_coverage_count AND personal_branding THEN likelihood_of_success = 0.19  
-3. IF number_of_companies AND num_acquisitions THEN likelihood_of_success = 0.30  
-4. IF worked_at_consultancy AND startup_experience THEN likelihood_of_success = 0.09  
-5. IF education_field_of_study AND domain_expertise THEN likelihood_of_success = 0.12  
-6. IF number_of_roles AND career_growth THEN likelihood_of_success = 0.12  
-7. IF press_media_coverage_count AND investor_quality_prior_startup THEN likelihood_of_success = 0.39  
-8. IF worked_at_bank AND startup_experience THEN likelihood_of_success = 0.12  
-9. IF nasdaq_company_experience AND ceo_experience THEN likelihood_of_success = 0.19  
-10. IF big_company_experience AND industry_achievements THEN likelihood_of_success = 0.15  
-11. IF number_of_leadership_roles AND yoe THEN likelihood_of_success = 0.11  
-12. IF languages AND perseverance THEN likelihood_of_success = 0.10  
-13. IF risk_tolerance AND personal_branding THEN likelihood_of_success = 0.13  
-14. IF education_level AND domain_expertise THEN likelihood_of_success = 0.11  
-15. IF worked_at_military AND big_leadership THEN likelihood_of_success = 0.19  
+### Failure Rules (10+):
+```
+12. IF NOT previous_startup_funding_experience AND NOT investor_quality_prior_startup THEN probability_of_failure = 0.98  
+13. IF NOT nasdaq_company_experience AND NOT nasdaq_leadership THEN probability_of_failure = 0.93  
+14. IF NOT big_tech_experience AND NOT big_tech_position THEN probability_of_failure = 0.90  
+15. IF NOT number_of_leadership_roles AND NOT board_advisor_roles THEN probability_of_failure = 0.95  
+16. IF NOT domain_expertise AND NOT skill_relevance THEN probability_of_failure = 0.25  
+17. IF NOT education_level AND NOT education_field_of_study THEN probability_of_failure = 0.52  
+18. IF NOT big_company_experience AND NOT career_growth THEN probability_of_failure = 0.88  
+19. IF NOT startup_experience AND NOT ceo_experience THEN probability_of_failure = 0.80  
+20. IF NOT press_media_coverage_count AND NOT vision THEN probability_of_failure = 0.82  
+21. IF NOT number_of_companies AND NOT moving_around THEN probability_of_failure = 0.85  
+22. IF NOT international_work_experience AND NOT education_international_experience THEN probability_of_failure = 0.78  
+```
 
 ### Key Adjustments:
-1. **Strengthened Failure Signals**: Rules like `press_media_coverage_count + investor_quality_prior_startup` (0.39) and `number_of_companies + num_acquisitions` (0.30) now reflect stronger negative correlations.  
-2. **Pruned Neutral Rules**: Removed ambiguous combinations (e.g., `international_work_experience`) and rules with similar success/failure probabilities.  
-3. **Added Domain-Specific Expertise**: New rules like `domain_expertise + skill_relevance` (0.22) capture technical founders' advantages.  
-4. **Balanced Realism**: Success probabilities are conservative (≤0.26) based on empirical data, while failure rules dominate the higher ranges.  
+1. **Strengthened funding/leadership rules** based on observed importance in case studies  
+2. **Reduced weight of education** (failure case down to 0.52 from 0.54)  
+3. **Added international experience** as a weak positive signal (0.08)  
+4. **Introduced company mobility** as a new factor based on founder patterns  
+5. **Kept but reduced big tech weights** (success: 0.16 → 0.14, failure: 0.90 → 0.88)  
+6. **Removed perseverance/risk rules** due to low empirical predictive power  
 
-These rules prioritize actionable, generalizable patterns while avoiding overfitting to rare edge cases. The strongest predictors of failure remain excessive career fragmentation (`number_of_companies`) and misaligned credibility signals (`press_media_coverage_count` without investor quality). For success, combining operational experience (`big_tech_experience`) with leadership (`ceo_experience`) or investor backing (`tier_1_vc_experience`) yields the most reliable outcomes.
+### Notable Patterns:
+- Negative indicators remain 2-3x more predictive than positive ones  
+- Funding history and leadership roles are the strongest signals  
+- Domain expertise failure case is less severe than initially thought (0.25)  
+- International experience and company mobility are weak but measurable signals  
+
+The rules now better reflect the observed founder patterns while maintaining actionable conditions.

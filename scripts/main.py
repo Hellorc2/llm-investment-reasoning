@@ -2,11 +2,16 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
+import numpy as np
 
+from problog.program import PrologString
+from problog import get_evaluatable
+    
 
 from datetime import datetime
 from Z_data_utils import get_n_filtered_rows, get_n_random_rows_and_split
 from typing import List, Tuple
+from G_generate_problog import generate_problog_program
 
 
 def generate_insights(model="deepseek", iterative = False, iterative_index = 0):
@@ -67,7 +72,7 @@ def generate_insights(model="deepseek", iterative = False, iterative_index = 0):
     results_df.to_csv(final_output_path, index=False)
     print(f"\nFinal results saved to: {final_output_path}")
 
-def split_training_data(batch_size=50):
+def split_training_data(successful_rows = 5, unsuccessful_rows = 45):
     # Create iterative_train_data directory if it doesn't exist
     data_dir = 'iterative_train_data'
     os.makedirs(data_dir, exist_ok=True)
@@ -81,14 +86,14 @@ def split_training_data(batch_size=50):
     
     # Calculate number of complete batches
     total_rows = len(train_data)
-    num_complete_batches = total_rows // batch_size
-    remaining_rows = total_rows % batch_size
+    num_complete_batches = total_rows // (successful_rows + unsuccessful_rows)
+    remaining_rows = total_rows % (successful_rows + unsuccessful_rows)
     
     # Create batches
     for i in range(num_complete_batches):
         # Sample 5 successful and 45 unsuccessful rows
-        batch_successful = successful.sample(n=5)
-        batch_unsuccessful = unsuccessful.sample(n=45)
+        batch_successful = successful.sample(n=successful_rows)
+        batch_unsuccessful = unsuccessful.sample(n=unsuccessful_rows)
         
         # Combine and shuffle
         batch = pd.concat([batch_successful, batch_unsuccessful])
@@ -109,33 +114,24 @@ def split_training_data(batch_size=50):
         last_batch = last_batch.sample(frac=1).reset_index(drop=True)
         last_batch.to_csv(os.path.join(data_dir, f'train_batch_{num_complete_batches:03d}.csv'), index=False)
     
-    print(f"Split {total_rows} rows into {num_complete_batches + (1 if remaining_rows > 0 else 0)} batches")
-    print(f"Batch size: {batch_size} (5 successful, 45 unsuccessful)")
-    print(f"Last batch size: {remaining_rows if remaining_rows > 0 else batch_size}")
     print(f"Batches saved in: {data_dir}")
 
 
-def insight_analysis():
-    from Ea_llm_reasoning import analyze_insights, analyze_insights_in_groups, logical_statements_to_csv
-    analysis_results = analyze_insights_in_groups('results/founder_insights_final.csv', model="deepseek")
-    logical_statements_to_csv(model="deepseek")
+def insight_analysis(iterative = False, iterative_index = 0):
+    from Ea_llm_reasoning import analyze_insights, analyze_insights_in_groups, logical_statements_preprocess
+    if iterative:
+        analysis_results = analyze_insights_in_groups(f'results/founder_insights_final_{iterative_index:03d}.csv', model="deepseek")
+    else:
+        analysis_results = analyze_insights_in_groups('results/founder_insights_final.csv', model="deepseek")
+    logical_statements_preprocess(model="deepseek")
     print(analysis_results)
 
-def generate_document():
-    from F_document_generation import generate_logical_criteria_doc
-    document = generate_logical_criteria_doc(model="deepseek")
-    print(document)
-
-def generate_program():
-    from Fb_problog_generation import generate_problog_program
-    program = generate_problog_program(model="deepseek")
-    print(program)
 
 def raw_probability_from_logical_statements(founders_data_sample, iterative_index = 0):
     from arm import calculate_success_probability, calculate_failure_probability
     
-    with open(f'logical_statements_preprocessed_{iterative_index:03d}.txt', 'r') as input_file, \
-            open(f'logical_statements_polished_{iterative_index:03d}.txt', 'w') as output_file:
+    with open(f'logical_statements_preprocessed.txt', 'r') as input_file, \
+            open(f'logical_statements_polished.txt', 'w') as output_file:
         for line in input_file:
             line = line.strip()
             if line:  # Skip empty lines
@@ -162,10 +158,10 @@ def raw_probability_from_logical_statements(founders_data_sample, iterative_inde
 
 def reflect_logical_statement(model="deepseek", iterative_index = 0):
     # Read the polished logical statements
-    with open(f'logical_statements_polished_{iterative_index:03d}.txt', 'r') as f:
+    with open(f'logical_statements_polished.txt', 'r') as f:
         polished_statements = f.read()
     
-    with open(f'logical_statements_preprocessed_{iterative_index:03d}.txt', 'r') as f:
+    with open(f'logical_statements_preprocessed.txt', 'r') as f:
         logical_statements = f.read()
 
     # Prepare prompts for LLM analysis
@@ -199,70 +195,56 @@ def reflect_logical_statement(model="deepseek", iterative_index = 0):
     print(analysis)
 
     # Write the LLM's reflected analysis to a new file
-    with open(f'logical_statements_reflected_{iterative_index:03d}.txt', 'w') as f:
+    with open(f'logical_statements_reflected.txt', 'w') as f:
         f.write(analysis)
 
     return analysis
 
+def save_iterative_results(iterative_index):
+    # Create directory if it doesn't exist
+    os.makedirs('iterative_training_results', exist_ok=True)
+
+    # Save logical statements
+    with open(f'iterative_training_results/iteration_{iterative_index:03d}_logical_statements.txt', 'w') as f:
+        with open('logical_statements.txt', 'r') as source:
+            f.write(source.read())
+
+    with open(f'iterative_training_results/iteration_{iterative_index:03d}_preprocessed.txt', 'w') as f:
+        with open('logical_statements_preprocessed.txt', 'r') as source:
+            f.write(source.read())
+
+
+    # Save polished statements
+    with open(f'iterative_training_results/iteration_{iterative_index:03d}_polished.txt', 'w') as f:
+        with open('logical_statements_polished.txt', 'r') as source:
+            f.write(source.read())
+
+    # Save problog program
+
+    # Save reflected analysis
+    with open(f'iterative_training_results/iteration_{iterative_index:03d}_reflected.txt', 'w') as f:
+        with open('logical_statements_reflected.txt', 'r') as source:
+            f.write(source.read())
 
 
 def iterative_training_step(model="deepseek", iterative_index=0):
 
-    founders_data_sample = pd.read_csv('founder_data_ml.csv').sample(n=3000)
+    founders_data_sample = pd.read_csv('founder_data_ml.csv').sample(n=1000)
 
     if iterative_index == 0:
-        generate_insights(iterative=False)
-        insight_analysis()
+        generate_insights(iterative=True, iterative_index=0)
+        insight_analysis(iterative=True, iterative_index=0)
     else:
-        raw_probability_from_logical_statements(founders_data_sample, iterative_index = iterative_index)
-        reflect_logical_statement(iterative_index = iterative_index)
         generate_new_insights(iterative_index = iterative_index)
-    
-    save_iterative_results(iterative_index = iterative_index)
 
-def save_iterative_results(iterative_index):
-    """
-    Save logical statements from each iteration into a consolidated file.
-    """
-    # Create directory if it doesn't exist
-    os.makedirs('iterative_training_results', exist_ok=True)
-    
-    # Read the logical statement files
-    with open('logical_statements.txt', 'r') as f:
-        logical = f.read()
-    with open('logical_statements_polished.txt', 'r') as f:
-        polished = f.read()
-    with open('logical_statements_reflected.txt', 'r') as f:
-        reflected = f.read()
-    with open('logical_statements_preprocessed.txt', 'r') as f:
-        preprocessed = f.read()
-        
-    # Write to consolidated file with iteration labels
-    # Save each type of logical statements to separate files
-    logical_path = os.path.join('iterative_training_results', f'iteration_{iterative_index:03d}_logical.txt')
-    polished_path = os.path.join('iterative_training_results', f'iteration_{iterative_index:03d}_polished.txt')
-    reflected_path = os.path.join('iterative_training_results', f'iteration_{iterative_index:03d}_reflected.txt')
-    preprocessed_path = os.path.join('iterative_training_results', f'iteration_{iterative_index:03d}_preprocessed.txt')
 
-    with open(logical_path, 'w') as f:
-        f.write(f"=== Iteration {iterative_index} Logical Statements ===\n\n")
-        f.write(logical)
-
-    with open(polished_path, 'w') as f:
-        f.write(f"=== Iteration {iterative_index} Polished Statements ===\n\n")
-        f.write(polished)
-
-    with open(reflected_path, 'w') as f:
-        f.write(f"=== Iteration {iterative_index} Reflected Statements ===\n\n")
-        f.write(reflected)
-        
-    with open(preprocessed_path, 'w') as f:
-        f.write(f"=== Iteration {iterative_index} Preprocessed Statements ===\n\n")
-        f.write(preprocessed)
+    raw_probability_from_logical_statements(founders_data_sample, iterative_index = iterative_index)
+    reflect_logical_statement(iterative_index = iterative_index)
+    save_iterative_results(iterative_index)
 
 def generate_new_insights(iterative_index):
     from C_insight_generation import analyze_founder, save_result
-    from Ea_llm_reasoning import analyze_insights_in_groups, logical_statements_to_csv
+    from Ea_llm_reasoning import analyze_insights_in_groups, logical_statements_preprocess
 
 
     generate_insights(iterative=True, iterative_index=iterative_index)
@@ -275,12 +257,133 @@ def generate_new_insights(iterative_index):
             previous_analysis = f.read()
 
     analyze_insights_in_groups(f'results/founder_insights_final_{iterative_index:03d}.csv', model="deepseek", iterative=True, previous_analysis = previous_analysis)
-    logical_statements_to_csv(model="deepseek")
+    logical_statements_preprocess(model="deepseek")
 
-def iterative_training():
-    for i in range(0, 100):
+def iterative_training(starting_from = 0):
+    for i in range(starting_from, 100):
         iterative_training_step(iterative_index=i)
         print(f"Iteration {i} complete")
+
+
+def predict_success_of_founder(row_number, founder_info, iteration_index, threshold_success, threshold_failure):
+
+    # Convert pandas Series to dictionary
+    founder_dict = founder_info.to_dict()
+    generate_problog_program(iteration_index, founder_dict)
+    
+
+    # Read the generated program
+    with open('problog_program.pl', 'r') as f:
+        program = f.read()
+    
+    # Create and evaluate the model using the 'approximate' engine
+    model = PrologString(program)
+    result = get_evaluatable().create_from(model).evaluate(engine='approximate')
+    
+    print(row_number, "Problog result:", result)  # Debug print to see the actual format
+    
+    # Handle empty result case
+    if not result:
+        print(f"Warning: Empty result for row {row_number}")
+        return f'{row_number},0.0,1.0,{founder_info["success"]}\n'
+    
+    # Convert result to dictionary and get success probability
+    result_dict = {str(k): float(v) for k, v in result.items()}
+    success_prob = result_dict.get('success', 0.0)
+    failure_prob = result_dict.get('failure', 1.0)
+    
+    is_success = founder_info['success']
+    
+    # Return the results instead of writing to file
+    return f'{row_number},{success_prob},{failure_prob},{is_success}\n'
+
+
+def manual_prediction_analysis(iteration_index, threshold_success = 0.3, threshold_failure = 1):
+    predictions_df = pd.read_csv(f'prediction_{iteration_index}.csv')
+    # Add a predictions column based on thresholds
+    predictions_df['prediction'] = ((predictions_df['success_prob'] > threshold_success) & 
+                                  (predictions_df['failure_prob'] < threshold_failure)).astype(int)
+    
+    # Calculate accuracy metrics
+    total_predictions = len(predictions_df)
+    correct_predictions = sum(predictions_df['prediction'] == predictions_df['is_success'])
+    accuracy = correct_predictions / total_predictions
+
+    # Calculate precision
+    true_positives = sum((predictions_df['prediction'] == 1) & (predictions_df['is_success'] == 1))
+    false_positives = sum((predictions_df['prediction'] == 1) & (predictions_df['is_success'] == 0))
+    precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0
+    
+    print(f"\nPrediction Summary for success threshold {threshold_success} and failure threshold {threshold_failure}:")
+    print(f"Total predictions: {total_predictions}")
+    print(f"Correct predictions: {correct_predictions}")
+    print(f"Accuracy: {accuracy:.2%}")
+    print(f"Precision: {precision:.2%}")
+    print(f"Number of true positives: {true_positives}")
+    print(f"Number of false positives: {false_positives}")
+    """
+    with open(f'prediction_summary_{iteration_index}.txt', 'a') as f:
+        f.write(f"Prediction Summary for Iteration {iteration_index}\n")
+        f.write(f"Success Threshold: {threshold_success}\n")
+        f.write(f"Failure Threshold: {threshold_failure}\n")
+        f.write(f"Total predictions: {total_predictions}\n")
+        f.write(f"Correct predictions: {correct_predictions}\n") 
+        f.write(f"Accuracy: {accuracy:.2%}\n")
+        f.write(f"Precision: {precision:.2%}\n")
+        f.write(f"Number of true positives: {true_positives}\n")
+        f.write(f"Number of false positives: {false_positives}\n")
+    """
+    
+    return precision
+
+        
+
+def predict(csv_file, iteration_index, threshold_success = 0.2, threshold_failure = 0.999):
+    # Read the data using pandas
+    data = pd.read_csv(csv_file)
+    # Clear prediction.csv before starting predictions
+    import shutil
+    try:
+        shutil.copyfile(f'prediction_{iteration_index}.csv', f'prediction_copy_{iteration_index}.csv')
+    except FileNotFoundError:
+        pass  # Ignore if original file doesn't exist yet
+    with open(f'prediction_{iteration_index}.csv', 'w') as f:
+        f.write('row_number,success_prob,failure_prob,is_success\n')
+    
+    # Convert DataFrame to list of tuples for parallel processing
+    from multiprocessing import Pool, cpu_count
+    import itertools
+    
+    # Create list of (index, row) tuples
+    rows_to_process = list(data.iterrows())
+    
+    # Create a pool of workers
+    num_processes = cpu_count()  # Use number of CPU cores
+    pool = Pool(processes=num_processes)
+    
+    # Process rows in parallel with batch saving
+    batch_size = 80
+    results = []
+    for i in range(0, len(rows_to_process), batch_size):
+        batch = rows_to_process[i:i + batch_size]
+        batch_results = pool.starmap(predict_success_of_founder, 
+                                   [(idx, row, iteration_index, threshold_success, threshold_failure) 
+                                    for idx, row in batch])
+        
+        # Save this batch
+        with open(f'prediction_{iteration_index}.csv', 'a') as f:
+            f.writelines(batch_results)
+        
+        print(f"Processed and saved {min(i + batch_size, len(rows_to_process))} rows out of {len(rows_to_process)}")
+    
+    # Close the pool
+    pool.close()
+    pool.join()
+    
+    print("finished")
+
+
+        
         
 
 def generate_bayesian_network():
@@ -312,6 +415,57 @@ def generate_xgboost_model():
     else:
         print("Failed to process data. Please check the input files and columns.")
 
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Store results for plotting
+results = []
+for iteration_index in [0,1,2,10,20]:
+    for j in [0.99, 0.999, 0.9999]:
+        for i in np.arange(0.05, 0.95, 0.05):
+            precision = manual_prediction_analysis(iteration_index, i, j)
+            results.append({
+                'iteration': iteration_index,
+                'threshold_success': i,
+                'threshold_failure': j,
+                'precision': precision
+            })
 
 
-iterative_training()
+# Convert results to DataFrame for easier plotting
+results_df = pd.DataFrame(results)
+
+# Create three separate plots, one for each failure threshold
+for j in [0.99, 0.999, 0.9999]:
+    plt.figure(figsize=(12, 6))
+    
+    # Filter data for this failure threshold
+    threshold_data = results_df[results_df['threshold_failure'] == j]
+    
+    # Plot lines for each iteration
+    for iteration in threshold_data['iteration'].unique():
+        iteration_data = threshold_data[threshold_data['iteration'] == iteration]
+        plt.plot(iteration_data['threshold_success'], iteration_data['precision'], 
+                 label=f'Iteration {iteration}', marker='o')
+    
+    plt.xlabel('Success Threshold')
+    plt.ylabel('Precision')
+    plt.title(f'Precision vs Success Threshold (Failure Threshold = {j})')
+    plt.legend()
+    plt.grid(True)
+    
+    # Save the plot
+    plt.savefig(f'precision_analysis_failure_threshold_{j}.png')
+    plt.close()
+
+# Print summary statistics for each failure threshold
+print("\nSummary Statistics by Failure Threshold:")
+for j in [0.99, 0.999, 0.9999]:
+    print(f"\nFailure Threshold = {j}")
+    threshold_data = results_df[results_df['threshold_failure'] == j]
+    print(threshold_data.groupby('iteration')['precision'].agg(['mean', 'max', 'min']))
+"""
+
+if __name__ == '__main__':
+    predict(csv_file='test_data_reduced.csv', iteration_index=21)

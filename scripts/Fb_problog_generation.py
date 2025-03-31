@@ -28,5 +28,3 @@ def generate_problog_program(model: str = "openai") -> None:
     # Write result to policy.txt
     with open('problog_program.txt', 'w') as f:
         f.write(result)
-
-

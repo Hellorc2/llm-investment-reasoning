@@ -36,7 +36,7 @@ def get_n_filtered_rows(n: int, columns: List[str], base_csv: str = 'founder_dat
     return founder_df[columns].head(n)
 
 def get_n_random_rows_and_split(num_success: int, num_failure: int, columns: List[str], 
-                              base_csv: str = 'founder_data.csv',
+                              base_csv: str = 'founder_scores_3_25_reasearch.csv',
                               output_selected: str = "selected_rows.csv", 
                               output_remaining: str = "remaining_rows.csv") -> pd.DataFrame:
     """
@@ -65,12 +65,16 @@ def get_n_random_rows_and_split(num_success: int, num_failure: int, columns: Lis
         return f"Error: {base_csv} file not found in the parent directory"
     except Exception as e:
         return f"Error reading CSV file: {str(e)}"
+    
+    if columns == []:
+        columns = founder_df.columns.tolist()
+    else:
             
     # Check if all requested columns exist in the data
-    invalid_columns = [col for col in columns if col not in founder_df.columns]
-        
-    if invalid_columns:
-        return f"Error: The following columns do not exist: {', '.join(invalid_columns)}"
+        invalid_columns = [col for col in columns if col not in founder_df.columns]
+            
+        if invalid_columns:
+            return f"Error: The following columns do not exist: {', '.join(invalid_columns)}"
     
     # Split data by success
     success_data = founder_df[founder_df['success'] == True]
@@ -83,8 +87,8 @@ def get_n_random_rows_and_split(num_success: int, num_failure: int, columns: Lis
         return f"Error: Only {len(failure_data)} failed cases available, but {num_failure} requested"
             
     # Randomly select rows from each category
-    selected_success = success_data[columns].sample(n=num_success, random_state=42)
-    selected_failure = failure_data[columns].sample(n=num_failure, random_state=42)
+    selected_success = success_data[columns].sample(n=num_success)
+    selected_failure = failure_data[columns].sample(n=num_failure)
     
     # Combine selected rows
     selected_rows = pd.concat([selected_success, selected_failure])
