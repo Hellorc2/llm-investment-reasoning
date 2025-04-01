@@ -58,14 +58,7 @@ def read_polished_rules(iteration_number):
                 rules.append((is_success, feature_str, probability))
     return rules
 
-
-
-
-def generate_problog_program(iteration_number, founder_info):
-
-    #include the attributes
-
-    # Define all possible attributes
+def generate_base_problog_program(iteration_number):
     attributes = [
         "professional_athlete", "childhood_entrepreneurship", "competitions", "ten_thousand_hours_of_mastery",
         "languages", "perseverance", "risk_tolerance", "vision", "adaptability", "personal_branding",
@@ -81,18 +74,7 @@ def generate_problog_program(iteration_number, founder_info):
     ]
 
     rules = read_preprocessed_rules(iteration_number)
-    with open('problog_program.pl', 'w') as f:
-        for attr in attributes:
-            # Get the value from founder_info dataframe row
-            value = founder_info[attr]
-            # Only write the attribute if it's True/1
-            if value == 0 or value == False:
-                prob = 0
-            elif pd.isna(value):
-                prob = 0
-            else:
-                prob = 1
-            f.write(f"{prob}::{attr}.\n")
+    with open(f'problog_program_base_{iteration_number}.pl', 'w') as f:
         for rule in rules:
             is_success, feature_str, probability = rule
             # Clean up feature string by removing brackets and quotes
@@ -117,3 +99,56 @@ def generate_problog_program(iteration_number, founder_info):
         # Add query for success probability
         f.write("\nquery(success).\n")
         f.write("\nquery(failure).\n")
+
+
+
+
+def generate_problog_program(iteration_number, founder_info, program_file):
+
+    # Define all possible attributes
+    attributes = [
+        "professional_athlete", "childhood_entrepreneurship", "competitions", "ten_thousand_hours_of_mastery",
+        "languages", "perseverance", "risk_tolerance", "vision", "adaptability", "personal_branding",
+        "education_level", "education_institution", "education_field_of_study", "education_international_experience",
+        "education_extracurricular_involvement", "education_awards_and_honors", "big_leadership", "nasdaq_leadership",
+        "number_of_leadership_roles", "being_lead_of_nonprofits", "number_of_roles", "number_of_companies", "industry_achievements",
+        "big_company_experience", "nasdaq_company_experience", "big_tech_experience", "google_experience", "facebook_meta_experience",
+        "microsoft_experience", "amazon_experience", "apple_experience", "career_growth", "moving_around",
+        "international_work_experience", "worked_at_military", "big_tech_position", "worked_at_consultancy", "worked_at_bank",
+        "press_media_coverage_count", "vc_experience", "angel_experience", "quant_experience",
+        "board_advisor_roles", "tier_1_vc_experience", "startup_experience", "ceo_experience", "investor_quality_prior_startup",
+        "previous_startup_funding_experience", "ipo_experience", "num_acquisitions", "domain_expertise", "skill_relevance", "yoe"
+    ]
+
+
+
+    with open(program_file, 'w') as f:
+        for attr in attributes:
+            # Get the value from founder_info dataframe row
+            value = founder_info[attr]
+            # Only write the attribute if it's True/1
+            if value == 0 or value == False or value == [] or value == "[]":
+                prob = 0
+            elif pd.isna(value):
+                prob = 0
+            else:
+                if attr == "yoe":
+                    if value > 10:
+                        prob = 1
+                    else:
+                        prob = 0
+                else:
+                    prob = 1
+            
+
+            f.write(f"{prob}::{attr}.\n")
+    
+        # First copy the base problog program
+    base_program_path = f'problog_program_base_{iteration_number}.pl'
+    with open(base_program_path, 'r') as base_file:
+        base_content = base_file.read()
+    
+    # Open program file in append mode since we'll add more content after this
+    with open(program_file, 'a') as f:
+        f.write(base_content)
+       

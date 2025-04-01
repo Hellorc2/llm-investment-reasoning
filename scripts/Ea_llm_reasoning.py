@@ -182,9 +182,9 @@ def logical_statements_preprocess(txt_path: str = 'logical_statements.txt', mode
     previous_startup_funding_experience
     ipo_experience, num_acquisitions, domain_expertise, skill_relevance, yoe   
 
-    DO NOT include comparatives in the conditions such as education_level = 'high'. If you see a condition like this with positive characteristics,
-    remove everything including and after the comparator; if you see a condition like this with negative characteristics, do the same but add not_ in
-    front of the condition.
+    DO NOT include comparatives in the conditions such as education_level = 'high'. If you see a condition like this with positive characteristics 
+    such as high, >, true, remove everything including and after the comparator; if you see a condition like this with negative characteristics such as 
+    low, <, false, do the same but add not_ in front of the condition.
 
     DOUBLE CHECK that all the conditions appear in the list of allowed conditions! If not, delete the rule.
     

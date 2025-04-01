@@ -369,8 +369,29 @@ def calculate_success_probability(feature_combination, founders_data_sample):
             
             # Update the overall mask with AND operation
             mask = mask & feature_mask
-        else:
-            continue
+        elif feature.startswith('not_'):
+            feature = feature[4:]
+            feature = feature[4:]
+            if feature in founders_data_sample.columns:
+                feature_mask = pd.Series(False, index=founders_data_sample.index)
+            
+            # Handle boolean values (including string 'True'/'False')
+                if founders_data_sample[feature].dtype == bool or founders_data_sample[feature].dtype == object:
+                    # Convert to boolean if it's a string
+                    if founders_data_sample[feature].dtype == object:
+                        feature_mask = (founders_data_sample[feature].astype(str).str.lower() == 'false')
+                    else:
+                        feature_mask = (founders_data_sample[feature] == False)
+                
+                # Handle numeric values
+                elif pd.api.types.is_numeric_dtype(founders_data_sample[feature]):
+                    feature_mask = (founders_data_sample[feature] == 0)
+                
+                # Update the overall mask with AND operation
+                mask = mask & feature_mask
+                
+                # Handle boolean values (including string 'True'/'False')
+                
     
     # Apply the filter to get samples meeting all criteria
     filtered_data = founders_data_sample[mask]
@@ -380,7 +401,7 @@ def calculate_success_probability(feature_combination, founders_data_sample):
     success_probability = (success_count / len(filtered_data)) * 100 if len(filtered_data) > 0 else 0
     return success_probability, len(filtered_data)  # Return both probability and count
 
-
+"""
 def calculate_failure_probability(feature_combination, founders_data_sample):
     # Calculate random failure probability
     real_world_prob = 89.1
@@ -427,6 +448,71 @@ def calculate_failure_probability(feature_combination, founders_data_sample):
     
     # Calculate failure probability
     failure_probability = (len(filtered_data) / len(founders_data_sample)) * 100 if len(founders_data_sample) > 0 else 0
+    return failure_probability, len(filtered_data)
+"""
+
+
+def calculate_failure_probability(feature_combination, founders_data_sample):
+    # Calculate random failure probability
+    real_world_prob = 89.1
+    random_failure_prob = (founders_data_sample['success'] == 0).mean() * 100
+        # Filter out successful founders to focus on failures
+
+
+    # Create mask for the specified feature combination
+    mask = pd.Series(True, index=founders_data_sample.index)
+    for feature in feature_combination:
+        # Strip spaces from feature name
+        feature = feature.strip()
+        if feature.startswith('not_'):
+            feature = feature[4:]
+            if feature in founders_data_sample.columns:
+                feature_mask = pd.Series(False, index=founders_data_sample.index)
+            
+            # Handle boolean values (including string 'True'/'False')
+                if founders_data_sample[feature].dtype == bool or founders_data_sample[feature].dtype == object:
+                    # Convert to boolean if it's a string
+                    if founders_data_sample[feature].dtype == object:
+                        feature_mask = (founders_data_sample[feature].astype(str).str.lower() == 'false')
+                    else:
+                        feature_mask = (founders_data_sample[feature] == False)
+                
+                # Handle numeric values
+                elif pd.api.types.is_numeric_dtype(founders_data_sample[feature]):
+                    feature_mask = (founders_data_sample[feature] == 0)
+                
+                # Update the overall mask with AND operation
+                mask = mask & feature_mask
+                # Handle negation by getting the actual feature name after 'not_'
+            else:
+                continue
+        elif feature in founders_data_sample.columns:
+            feature_mask = pd.Series(False, index=founders_data_sample.index)
+            
+            # Handle boolean values (including string 'True'/'False')
+            if founders_data_sample[feature].dtype == bool or founders_data_sample[feature].dtype == object:
+                # Convert to boolean if it's a string
+                if founders_data_sample[feature].dtype == object:
+                    feature_mask = (founders_data_sample[feature].astype(str).str.lower() == 'true')
+                else:
+                    feature_mask = (founders_data_sample[feature] == True)
+            
+            # Handle numeric values
+            elif pd.api.types.is_numeric_dtype(founders_data_sample[feature]):
+                feature_mask = (founders_data_sample[feature] > 0)
+            
+            # Update the overall mask with AND operation
+            mask = mask & feature_mask
+                    # Handle different data types and values
+    
+    # Apply the filter to get samples meeting all criteria
+    filtered_data = founders_data_sample[mask]
+        
+    # Get the success values from the filtered data instead of the original data
+    failed_filtered_data = filtered_data[filtered_data['success'] == 0]
+    
+    # Calculate failure probability
+    failure_probability = (len(failed_filtered_data) / len(filtered_data)) * 100 if len(filtered_data) > 0 else 0
     return failure_probability, len(filtered_data)
 
 
