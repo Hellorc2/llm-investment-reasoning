@@ -690,5 +690,5 @@ def average_prediction(iterations):
     return result_df
 
 
-from Z_data_utils import replace_language_column
-replace_language_column('train_data.csv')
+if __name__ == "__main__":
+    predict('test_data_reduced.csv', 20)

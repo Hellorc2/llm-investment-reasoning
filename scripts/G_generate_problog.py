@@ -120,6 +120,34 @@ def generate_problog_program(iteration_number, founder_info, program_file):
         "previous_startup_funding_experience", "ipo_experience", "num_acquisitions", "domain_expertise", "skill_relevance", "yoe"
     ]
 
+    
+    attribute_limits = {
+        "languages": [1, 4],
+        "perseverance": [0, 2],
+        "risk_tolerance": [0, 2],
+        "vision": [0, 2],
+        "adaptability": [0, 2],
+        "personal_branding": [0, 2],
+        "education_level": [0, 3],
+        "education_institution": [0, 4],
+        "education_field_of_study": [0, 3],
+        "big_leadership": [0, 3],
+        "nasdaq_leadership": [0, 3],
+        "number_of_leadership_roles": [0, 2],
+        "number_of_roles": [0, 20],
+        "number_of_companies": [0, 10],
+        "industry_achievements": [0, 1],
+        "press_media_coverage_count": [0, 2],
+        "vc_experience": [0, 2],
+        "angel_experience": [0, 2],
+        "quant_experience": [0, 2],
+        "investor_quality_prior_startup": [0, 2],
+        "previous_startup_funding_experience": [0, 4],
+        "num_acquisitions": [0, 1],
+        "domain_expertise": [0, 3],
+        "skill_relevance": [0, 3],
+    }
+
 
 
     with open(program_file, 'w') as f:
@@ -131,14 +159,20 @@ def generate_problog_program(iteration_number, founder_info, program_file):
                 prob = 0
             elif pd.isna(value):
                 prob = 0
-            else:
-                if attr == "yoe":
-                    if value > 10:
-                        prob = 1
-                    else:
-                        prob = 0
-                else:
+            elif attr in attribute_limits.keys():
+                if value >= attribute_limits[attr][1]:
                     prob = 1
+                elif value <= attribute_limits[attr][0]:
+                    prob = 0
+                else:
+                    prob = 0.5
+            elif attr == "yoe":
+                if value > 10:
+                    prob = 1
+                else:
+                    prob = 0
+            else:
+                prob = 1
             
 
             f.write(f"{prob}::{attr}.\n")
