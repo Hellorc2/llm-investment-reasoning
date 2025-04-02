@@ -102,6 +102,31 @@ def get_n_random_rows_and_split(num_success: int, num_failure: int, columns: Lis
     
     return selected_rows
 
+def replace_language_column(base_csv) -> pd.DataFrame:
+    """
+    Replaces the language column with the language_cleaned column
+    """
+    # Get the parent directory path
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+    # Read the founder data CSV file
+    try:
+        founder_df = pd.read_csv(os.path.join(parent_dir, base_csv))
+    except FileNotFoundError:
+        return f"Error: {base_csv} file not found in the parent directory"
+        
+    # Replace the language column with the language_cleaned column
+    # Handle NaN values by checking if the value is a string before applying len()
+    founder_df['languages'] = founder_df['languages'].apply(lambda x: len(eval(x)) if isinstance(x, str) else 0)
+
+    # Save the updated DataFrame back to CSV
+    try:
+        founder_df.to_csv(os.path.join(parent_dir, base_csv), index=False)
+        return founder_df
+    except Exception as e:
+        return f"Error saving CSV file: {str(e)}"
+
+
 def count_successful_founders(base_csv: str = 'founder_data.csv') -> dict:
     """
     Counts the number of successful and unsuccessful founders in the dataset
