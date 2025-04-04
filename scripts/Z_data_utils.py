@@ -161,6 +161,51 @@ def count_successful_founders(base_csv: str = 'founder_data.csv') -> dict:
         'success_rate': f"{(success_count/total_count)*100:.2f}%"
     }
 
+def split_training_data(successful_rows = 5, unsuccessful_rows = 45):
+    # Create iterative_train_data directory if it doesn't exist
+    data_dir = 'iterative_train_data'
+    os.makedirs(data_dir, exist_ok=True)
+
+    # Read the training data
+    train_data = pd.read_csv('train_data.csv')
+    
+    # Split data into successful and unsuccessful
+    successful = train_data[train_data['success'] == True]
+    unsuccessful = train_data[train_data['success'] == False]
+    
+    # Calculate number of complete batches
+    total_rows = len(train_data)
+    num_complete_batches = total_rows // (successful_rows + unsuccessful_rows)
+    remaining_rows = total_rows % (successful_rows + unsuccessful_rows)
+    
+    # Create batches
+    for i in range(num_complete_batches):
+        # Sample 5 successful and 45 unsuccessful rows
+        batch_successful = successful.sample(n=successful_rows)
+        batch_unsuccessful = unsuccessful.sample(n=unsuccessful_rows)
+        
+        # Combine and shuffle
+        batch = pd.concat([batch_successful, batch_unsuccessful])
+        batch = batch.sample(frac=1).reset_index(drop=True)
+        
+        batch.to_csv(os.path.join(data_dir, f'train_batch_{i:03d}.csv'), index=False)
+    
+    # Handle remaining rows as the last batch if any
+    if remaining_rows > 0:
+        # Calculate proportions for remaining rows to maintain roughly same ratio
+        n_successful = max(1, int(remaining_rows * 0.1))  # At least 1 successful
+        n_unsuccessful = remaining_rows - n_successful
+        
+        batch_successful = successful.sample(n=n_successful)
+        batch_unsuccessful = unsuccessful.sample(n=n_unsuccessful)
+        
+        last_batch = pd.concat([batch_successful, batch_unsuccessful])
+        last_batch = last_batch.sample(frac=1).reset_index(drop=True)
+        last_batch.to_csv(os.path.join(data_dir, f'train_batch_{num_complete_batches:03d}.csv'), index=False)
+    
+    print(f"Batches saved in: {data_dir}")
+
+
 # Test the data loading and filtering
 if __name__ == "__main__":
     print(get_n_filtered_rows(5, ['cleaned_founder_linkedin_data', 'cleaned_founder_cb_data', 'success']))

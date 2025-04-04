@@ -23,20 +23,33 @@ def analyze_founder(founder_profile: str, success: bool, model: str = "openai") 
     success_verb = "succeeded" if success else "failed"
     
     system_prompt = "You are a VC anaylst trying to predict the success of a startup based some information about the founders."
+    
     user_prompt = f"""Given the following founder's background and startup idea:
              Founder Profile (LinkedIn followed by Crunchbase): {founder_profile}
-        This startup was eventually {success_text}.
-        Clearly explain the most important reasons why this startup {success_verb}. Try to use simple vocabulary"""
+             Predict whether or not this startup was successful. Clearly explain your arguments. 
+             Try to use simple vocabulary"""
     
     if model == "openai":
         from llms.openai import get_llm_response, get_llm_response_with_history
     else:
         from llms.deepseek import get_llm_response, get_llm_response_with_history
         
-    insight = get_llm_response(system_prompt, user_prompt)
-    print(insight)
-    return insight
-    
+    prediction = get_llm_response(system_prompt, user_prompt)
+    print(prediction)
+
+    user_prompt2 = f"""You are now given that the same founder was {success_text}. Please reflect on your prediction. If your prediction was correct,
+    try to polish your arguments. If your prediction was incorrect, think about what might went wrong and produce a new explanation. In either
+    case, clearly identify the most important reasons why the startup was {success_verb}."""
+
+    reflection = get_llm_response_with_history(system_prompt, [{"role": "user", "content": user_prompt}, 
+                                                               {"role": "assistant", "content": prediction}, 
+                                                               {"role": "user", "content": user_prompt2}])
+    print(reflection)
+
+
+    return reflection
+
+
     """
     user_prompt2 = Can you rephrase each sentence in the above insight in a more logical way? 
     DON'T drop or add any sentences. 
@@ -50,6 +63,8 @@ def analyze_founder(founder_profile: str, success: bool, model: str = "openai") 
     return get_llm_response_with_history(system_prompt, conversation_history)
 
     """
+
+
 
 def save_result(timestamp: str, result: str) -> None:
     """
@@ -100,7 +115,6 @@ def save_result(timestamp: str, result: str) -> None:
         
         This startup was eventually {status}.
 """
-
 
 
 

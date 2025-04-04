@@ -114,8 +114,8 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
         ipo_experience, num_acquisitions, domain_expertise, skill_relevance, yoe   
         .
         
-        Finally,limit the number of rules to between 20 and 25 actionable and generalizable conditions. Make sure at least 10 of 
-        the rules focus on when the founder is more likely to succeed.
+        Finally,limit the number of rules to between 20 and 25 actionable and generalizable conditions. Make sure at least 12 of 
+        the rules focus on when the founder is more likely to succeed, and at least8 of the rules focus on when the founder is more likely to fail.
 
     """
 
@@ -124,8 +124,8 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
 
         {previous_analysis}.
 
-        Consider these old rules as valuable hints, especially the probabilities, but you are STRONGLY encouraged to delete or modify them, or to add new ones
-        to bring the total number of rules to between 20 and 25."""
+        Consider these old rules as valuable hints, especially the probabilities, but you are STRONGLY encouraged to add new rules, delete existing rules
+        or slightly modify the probabilities based on your new thoughts. Bring the total number of rules to between 20 and 25."""
     
     if model == "openai":
         from llms.openai import get_llm_response
@@ -186,7 +186,8 @@ def logical_statements_preprocess(txt_path: str = 'logical_statements.txt', mode
     such as high, >, true, remove everything including and after the comparator; if you see a condition like this with negative characteristics such as 
     low, <, false, do the same but add not_ in front of the condition.
 
-    DOUBLE CHECK that all the conditions appear in the list of allowed conditions! If not, delete the rule.
+    DOUBLE CHECK that all the conditions appear in the list of allowed conditions, or is one of the conditions with "not_" in front! If not, 
+    delete the rule.
     
 
     return me only the csv rows, no other text.

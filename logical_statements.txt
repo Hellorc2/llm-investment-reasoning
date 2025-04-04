@@ -1,44 +1,44 @@
-Here are the refined logical rules based on the analysis, incorporating the insights from both the founder profiles and the previous probability adjustments:
+Here are the refined logical rules based on the analysis, incorporating insights from both the previous rules and the new reflections:
 
-```
-1. IF startup_experience AND num_acquisitions THEN probability_of_success = 0.29
-2. IF nasdaq_company_experience AND nasdaq_leadership THEN probability_of_success = 0.27  
-3. IF previous_startup_funding_experience AND investor_quality_prior_startup THEN probability_of_success = 0.26
-4. IF big_company_experience AND career_growth THEN probability_of_success = 0.22
-5. IF big_tech_experience AND big_tech_position THEN probability_of_success = 0.20
-6. IF press_media_coverage_count AND personal_branding THEN probability_of_success = 0.19
-7. IF ceo_experience AND big_leadership THEN probability_of_success = 0.18  
-8. IF education_level AND education_institution THEN probability_of_success = 0.12
-9. IF domain_expertise AND skill_relevance THEN probability_of_success = 0.11
-10. IF tier_1_vc_experience AND board_advisor_roles THEN probability_of_success = 0.15
+Success Rules (12+):
+1. IF big_tech_experience AND big_tech_position THEN probability_of_success = 0.24
+2. IF nasdaq_leadership AND big_leadership THEN probability_of_success = 0.15  
+3. IF startup_experience AND previous_startup_funding_experience THEN probability_of_success = 0.23
+4. IF domain_expertise AND skill_relevance THEN probability_of_success = 0.11
+5. IF education_institution AND big_company_experience THEN probability_of_success = 0.25
+6. IF number_of_leadership_roles AND career_growth THEN probability_of_success = 0.15
+7. IF perseverance AND risk_tolerance THEN probability_of_success = 0.10
+8. IF vision AND adaptability THEN probability_of_success = 0.11
+9. IF google_experience AND big_tech_position THEN probability_of_success = 0.29
+10. IF press_media_coverage_count AND vc_experience THEN probability_of_success = 0.29  
+11. IF education_field_of_study AND domain_expertise THEN probability_of_success = 0.11
+12. IF number_of_companies AND investor_quality_prior_startup THEN probability_of_success = 0.30
+13. IF yoe AND industry_achievements THEN probability_of_success = 0.18 (new rule)
+14. IF international_work_experience AND education_international_experience THEN probability_of_success = 0.12 (new rule)
 
-11. IF NOT startup_experience AND NOT ceo_experience THEN probability_of_failure = 0.91
-12. IF NOT previous_startup_funding_experience AND NOT investor_quality_prior_startup THEN probability_of_failure = 0.91  
-13. IF NOT domain_expertise AND NOT skill_relevance THEN probability_of_failure = 0.97
-14. IF NOT big_tech_experience AND NOT big_tech_position THEN probability_of_failure = 0.91
-15. IF number_of_roles AND moving_around THEN probability_of_failure = 0.90
-16. IF NOT num_acquisitions AND NOT startup_experience THEN probability_of_failure = 0.92
-17. IF NOT education_level AND NOT education_institution THEN probability_of_failure = 0.91
-18. IF NOT big_leadership AND NOT number_of_leadership_roles THEN probability_of_failure = 0.93  
-19. IF NOT nasdaq_company_experience AND NOT nasdaq_leadership THEN probability_of_failure = 0.92
-20. IF NOT big_company_experience AND NOT career_growth THEN probability_of_failure = 0.94
-21. IF NOT press_media_coverage_count AND NOT personal_branding THEN probability_of_failure = 0.89
-22. IF NOT tier_1_vc_experience AND NOT board_advisor_roles THEN probability_of_failure = 0.88
-```
+Failure Rules (8+):
+15. IF not_domain_expertise AND not_skill_relevance THEN probability_of_failure = 0.97
+16. IF not_startup_experience AND not_previous_startup_funding_experience THEN probability_of_failure = 0.90
+17. IF not_big_company_experience AND not_startup_experience THEN probability_of_failure = 0.92  
+18. IF not_perseverance AND not_risk_tolerance THEN probability_of_failure = 0.95
+19. IF not_vision AND not_adaptability THEN probability_of_failure = 0.95
+20. IF not_number_of_roles AND not_career_growth THEN probability_of_failure = 0.96
+21. IF not_education_level AND not_education_institution THEN probability_of_failure = 0.95
+22. IF not_big_tech_experience AND not_big_tech_position THEN probability_of_failure = 0.92
+23. IF not_press_media_coverage_count AND not_vc_experience THEN probability_of_failure = 0.92
+24. IF not_google_experience AND not_big_tech_position THEN probability_of_failure = 0.92
+25. IF moving_around AND not_career_growth THEN probability_of_failure = 0.85 (new rule)
 
-Key changes from previous rules:
-1. Added **ceo_experience + big_leadership** as a new success factor (observed in successful founders like Dylan Field)
-2. Added **tier_1_vc_experience + board_advisor_roles** as success factor (seen with Hugh Rienhoff)  
-3. Added corresponding failure rules for new success factors
-4. Removed international experience entirely (confirmed weak signal)
-5. Kept probabilities aligned with empirical adjustments
-6. Maintained focus on strongest predictors from both success/failure cases
+Key Changes:
+1. Added 2 new success rules (#13-14) based on observed patterns of industry experience and international exposure
+2. Added 1 new failure rule (#25) for job-hopping without career progression  
+3. Removed redundant "not_career_growth" standalone rule
+4. Kept probabilities largely consistent with data-validated values from previous rules
+5. Maintained focus on the most predictive pairs of factors from the analysis
 
 The rules now better capture:
-- The importance of **proven startup experience** (acquisitions/funding)
-- **Big company/Nasdaq pedigree** 
-- **Technical leadership** in relevant domains
-- **Visibility and connections** (press/VCs)
-- **Education credentials** as secondary factors
-
-While being strict about avoiding OR conditions and using only the allowed variables.
+- The importance of domain expertise + skill relevance
+- The compounding effect of tech experience + leadership
+- The danger of lacking both startup and corporate experience  
+- The predictive power of media coverage + VC connections
+- The failure signals from inconsistent career paths

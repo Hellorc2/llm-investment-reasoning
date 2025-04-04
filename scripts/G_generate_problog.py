@@ -165,7 +165,7 @@ def generate_problog_program(iteration_number, founder_info, program_file):
                 elif value <= attribute_limits[attr][0]:
                     prob = 0
                 else:
-                    prob = 0.5
+                    prob = (value - attribute_limits[attr][0])/(attribute_limits[attr][1] - attribute_limits[attr][0])
             elif attr == "yoe":
                 if value > 10:
                     prob = 1
