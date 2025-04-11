@@ -97,8 +97,6 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
 
         Note that n is the number of conditions and can be any number, but try to have around 2 ANDs in each rule. AVOID using ORs!
 
-        Also, if you think a rule is neutral (e.g. probability between 0.4 and 0.6), then don't include it.
-
         For the conditions, you are only allowed to use one of the following:
         professional_athlete	childhood_entrepreneurship	competitions	ten_thousand_hours_of_mastery	
         languages	perseverance	risk_tolerance	vision	adaptability	personal_branding	
@@ -111,11 +109,13 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
         press_media_coverage_count	vc_experience	angel_experience	quant_experience	
         board_advisor_roles	tier_1_vc_experience	startup_experience	ceo_experience	investor_quality_prior_startup	
         previous_startup_funding_experience
-        ipo_experience, num_acquisitions, domain_expertise, skill_relevance, yoe   
+        ipo_experience, num_acquisitions, domain_expertise, skill_relevance
         .
+
+        If it's a negative condition (e.g. low, none, false, etc.), add a "not_" in front of the condition.
         
         Finally,limit the number of rules to between 20 and 25 actionable and generalizable conditions. Make sure at least 12 of 
-        the rules focus on when the founder is more likely to succeed, and at least8 of the rules focus on when the founder is more likely to fail.
+        the rules focus on when the founder is more likely to succeed, and at least 8 of the rules focus on when the founder is more likely to fail.
 
     """
 
@@ -134,12 +134,13 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
         
     response = get_llm_response(system_prompt, user_prompt)
     # Write the logical rules to a file
-    with open('logical_statements.txt', 'w') as f:
+    with open('logical_statements/logical_statements.txt', 'w') as f:
         f.write(response)
     
     return response
 
-def logical_statements_preprocess(txt_path: str = 'logical_statements.txt', model: str = "openai") -> str:
+def logical_statements_preprocess(input_file: str = 'logical_statements/logical_statements.txt', output_file: str = 'logical_statements/logical_statements_preprocessed.txt', 
+                                  model: str = "openai", iterative_index: int = 0) -> str:
     """
     Read logical statements from a text file and preprocess them using LLM.
     
@@ -151,8 +152,7 @@ def logical_statements_preprocess(txt_path: str = 'logical_statements.txt', mode
         str: The preprocessed logical statements
     """
     # Read the logical statements from file
-
-    with open(txt_path, 'r') as f:
+    with open(input_file, 'r') as f:
         combined_text = f.read()
     # Analyze patterns across all insights
     
@@ -166,7 +166,8 @@ def logical_statements_preprocess(txt_path: str = 'logical_statements.txt', mode
     {combined_text}
 
     Firstly, filter out any rules that contains ORs.
-    Then, convert each rule into a csv row with the format successpredictor(Boolean variable 0 or 1), condition1, condition2, ..., conditionn, likelihood_of_success
+    
+    Then convert each rule into a csv row with the format successpredictor(Boolean variable 0 or 1), condition1, condition2, ..., conditionn, likelihood_of_success
 
     For the conditions, you are still only allowed to use one of the following:
     professional_athlete	childhood_entrepreneurship	competitions	ten_thousand_hours_of_mastery	
@@ -180,7 +181,67 @@ def logical_statements_preprocess(txt_path: str = 'logical_statements.txt', mode
     press_media_coverage_count	vc_experience	angel_experience	quant_experience	
     board_advisor_roles	tier_1_vc_experience	startup_experience	ceo_experience	investor_quality_prior_startup	
     previous_startup_funding_experience
-    ipo_experience, num_acquisitions, domain_expertise, skill_relevance, yoe   
+    ipo_experience, num_acquisitions, domain_expertise, skill_relevance  
+
+    DO NOT include comparatives in the conditions such as education_level = 'high'. If you see a condition like this with positive characteristics 
+    such as high, >, true, remove everything including and after the comparator; if you see a condition like this with negative characteristics such as 
+    low, <, false, do the same but add not_ in front of the condition.
+
+    DOUBLE CHECK that all the conditions appear in the list of allowed conditions, or is one of the conditions with "not_" in front! If not, 
+    delete the rule.
+
+    Return me ONLY the csv rows, no other text.
+    """
+    
+    if model == "openai":
+        from llms.openai import get_llm_response
+    else:
+        from llms.deepseek import get_llm_response
+        
+    response = get_llm_response(system_prompt, user_prompt)
+    # Write the logical rules to a file
+
+    
+    with open(output_file, 'w') as f:
+        f.write(response)
+    
+    return response
+
+def modify_analysis_based_on_advice(analysis_path: str = 'iterative_training_results/iteration_000_preprocessed.txt', iterative_index = 0, model: str = "deepseek"):
+    with open(f'iterative_training_results/iteration_{iterative_index:03d}_preprocessed.txt', 'r') as f:
+        evaluated_str = """"Here are some advices on how to modify the policy to make work better. Modify these rules based on the advices:""" + f.read()
+    
+    with open(f'iterative_training_results/iteration_{iterative_index:03d}_preprocessed.txt', 'r') as f:
+        combined_text = f.read()
+
+        system_prompt = """You are a VC analyst trying to produce a policy for predicting startup success. You have produced previous policies and are now
+        given some advices on how to modify the policy to make it work better. for the policy, each rule has the format 
+        successpredictor(Boolean variable 0 or 1), condition1, condition2, ..., conditionk, probability of success/failure, where the conditions are ANDed together."
+    """
+    
+    user_prompt = f"""Given the policy produced at the current iteration:
+
+    {combined_text}
+
+    And the advices on how to modify the policy:
+
+    {evaluated_str}
+
+    Modify the policy based on the advices, using the same format.
+
+    For the conditions, you are still only allowed to use one of the following:
+    professional_athlete	childhood_entrepreneurship	competitions	ten_thousand_hours_of_mastery	
+    languages	perseverance	risk_tolerance	vision	adaptability	personal_branding	
+    education_level	education_institution	education_field_of_study	education_international_experience	
+    education_extracurricular_involvement	education_awards_and_honors	big_leadership	nasdaq_leadership	
+    number_of_leadership_roles	being_lead_of_nonprofits	number_of_roles	number_of_companies	industry_achievements	
+    big_company_experience	nasdaq_company_experience	big_tech_experience	google_experience	facebook_meta_experience	
+    microsoft_experience	amazon_experience	apple_experience	career_growth	moving_around	
+    international_work_experience	worked_at_military	big_tech_position	worked_at_consultancy	worked_at_bank	
+    press_media_coverage_count	vc_experience	angel_experience	quant_experience	
+    board_advisor_roles	tier_1_vc_experience	startup_experience	ceo_experience	investor_quality_prior_startup	
+    previous_startup_funding_experience
+    ipo_experience, num_acquisitions, domain_expertise, skill_relevance  
 
     DO NOT include comparatives in the conditions such as education_level = 'high'. If you see a condition like this with positive characteristics 
     such as high, >, true, remove everything including and after the comparator; if you see a condition like this with negative characteristics such as 
@@ -189,7 +250,6 @@ def logical_statements_preprocess(txt_path: str = 'logical_statements.txt', mode
     DOUBLE CHECK that all the conditions appear in the list of allowed conditions, or is one of the conditions with "not_" in front! If not, 
     delete the rule.
     
-
     return me only the csv rows, no other text.
 
     """
@@ -200,8 +260,8 @@ def logical_statements_preprocess(txt_path: str = 'logical_statements.txt', mode
         from llms.deepseek import get_llm_response
         
     response = get_llm_response(system_prompt, user_prompt)
-    # Write the logical rules to a file
-    with open('logical_statements_preprocessed.txt', 'w') as f:
+
+    with open(f'iterative_training_results/iteration_{iterative_index:03d}_preprocessed.txt', 'w') as f:
         f.write(response)
-    
+
     return response

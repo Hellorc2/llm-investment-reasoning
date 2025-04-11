@@ -4,14 +4,11 @@ from tqdm import tqdm  # For progress bar
 import argparse
 
 
-def main(feature_combination, min_sample, sample_size, base_feature, feature_value, exclude_features):
+def arm_success(founders_data_sample,feature_combination, min_sample, random_sample_size = 1):
     # This function performs association rule mining to find patterns in the data that correlate with success.
     # The main goals are to find frequent feature combinations that appear in successful founders and to generate association rules.
     # This is useful for analyzing which combinations of characteristics are most strongly associated with founder success.
-    # Load your data
-    file_path = 'founder_data_ml.csv'
-    # Load the dataset containing information on founder characteristics, which includes binary features indicating different traits and a success label.
-    founders_data_sample = pd.read_csv(file_path)
+
 
     # Calculate random success probability
     real_world_prob = 1.9
@@ -24,26 +21,12 @@ def main(feature_combination, min_sample, sample_size, base_feature, feature_val
     adjusted_random_prob = real_world_prob
     print(f"Random probability of success (baseline): {random_success_prob:.2f}%")
 
-    # Take a smaller sample of the data to reduce computational load
-    """founders_data_sample = founders_data.sample(sample_size, random_state=42)"""
-    # Take a random sample of the dataset for analysis. This helps reduce computational load while maintaining a representative subset.
-
-    print("\nCalculating probabilities for different feature combinations:")
-    print("\nFor features ['career_growth', 'num_acquisitions']:")
-    print("Calculated Association Probability is : ", calculate_success_probability(['career_growth', 'num_acquisitions'], founders_data_sample))
-    
-    print("\nFor features ['languages', 'moving_around']:")
-    print("Calculated Association Probability is : ", calculate_success_probability(['languages', 'moving_around'], founders_data_sample))
 
     # Filter and encode relevant columns
     categorical_data = founders_data_sample.select_dtypes(include=['int64', 'bool', 'object']).copy()
     # Select only categorical columns for encoding and analysis. This ensures that numerical features are not mistakenly included.
     
-    if exclude_features:
-        features_to_exclude = exclude_features.split(',')
-        categorical_data = categorical_data.drop(columns=features_to_exclude, errors='ignore')
-        # If exclude_features are provided, remove them from the dataset before proceeding.
-        # This allows focusing on specific features without interference from excluded characteristics.
+
     categorical_data_encoded = pd.get_dummies(categorical_data.drop(columns=['success']), columns=categorical_data.columns.drop('success')).astype(bool)
     # Convert categorical columns into binary format using one-hot encoding.
     # The success column is excluded because it's the target variable, not an input feature.
@@ -62,24 +45,6 @@ def main(feature_combination, min_sample, sample_size, base_feature, feature_val
     if frequent_itemsets.empty:
         print("No frequent itemsets were generated. Please adjust the min_support value.")
         return
-
-    # If base_feature is provided, filter itemsets to include only those containing the base_feature and feature_value
-    if base_feature and base_feature != 'None' and feature_value and feature_value != 'None':
-        base_feature_value = f"{base_feature}_{feature_value}"
-        encoded_columns = categorical_data_encoded.columns
-        matching_columns = [col for col in encoded_columns if base_feature in col and not col.endswith('_0') and not col.endswith('_False') and not col.endswith('_nope')]
-        # If a base feature and value are provided, filter itemsets to include only those containing the base feature.
-        # This allows focusing on specific characteristics of interest, such as a specific education level or work experience.
-        if not matching_columns:
-            print(f"No columns found for the base feature '{base_feature}' with value '{feature_value}'. Please check the feature or value.")
-            return
-        frequent_itemsets = frequent_itemsets[frequent_itemsets['itemsets'].apply(lambda x: any(item in matching_columns for item in x))]
-        if frequent_itemsets.empty:
-            print(f"No itemsets found containing the base feature '{base_feature}' with value '{feature_value}'. Please try a different base feature or adjust the min_support value.")
-            return frequent_itemsets[frequent_itemsets['itemsets'].apply(lambda x: any(item in matching_columns for item in x))]
-            if frequent_itemsets.empty:
-                print(f"No itemsets found containing the base feature '{base_feature}' with value '{feature_value}'. Please try a different base feature or adjust the min_support value.")
-                return
 
     # Filter itemsets to only include those with exactly the specified number of features
     frequent_itemsets = frequent_itemsets[frequent_itemsets['itemsets'].apply(lambda x: len(x) == feature_combination)]
@@ -142,10 +107,20 @@ def main(feature_combination, min_sample, sample_size, base_feature, feature_val
     pd.set_option('display.max_columns', None)
     pd.set_option('display.float_format', '{:.2f}'.format)
     pd.set_option('display.max_colwidth', None)
-    print(f"Top {args.num_results} Frequent Itemsets by Success Probability (including sample count, likelihood of success, and 95% confidence interval):")
+    print(f"Top Frequent Itemsets by Success Probability (including sample count, likelihood of success, and 95% confidence interval):")
     if not frequent_itemsets.empty:
-        print(frequent_itemsets[['itemsets', 'success_probability', 'sample_count', 'likelihood_of_success', 'real_world_prob', 'confidence_interval_95']].sort_values(by='success_probability', ascending=False).head(args.num_results))
+        top_itemsets = frequent_itemsets[['itemsets', 'success_probability', 'sample_count', 'likelihood_of_success', 'real_world_prob', 'confidence_interval_95']].sort_values(by='success_probability', ascending=False).head(5)
+        filtered_top_itemsets = top_itemsets[top_itemsets['sample_count'] >= 10]
+        print(top_itemsets)
+        random_selection = filtered_top_itemsets.sample(n=random_sample_size)
+        rule_str = random_selection[['itemsets','success_probability']]
+        print(rule_str)
+    
+    return rule_str
+    
+    
 
+    """
     # Generate association rules from the frequent itemsets
     print("\nGenerating association rules...")
     if frequent_itemsets.empty:
@@ -159,6 +134,7 @@ def main(feature_combination, min_sample, sample_size, base_feature, feature_val
         print("No association rules were generated. Please adjust the parameters.")
         return
 
+    
     # Filter rules to only include those with 'success_1' as the consequent
     success_rules = rules[rules['consequents'].apply(lambda x: 'success' in x)]
 
@@ -175,7 +151,7 @@ def main(feature_combination, min_sample, sample_size, base_feature, feature_val
         print(filtered_rules[['antecedents', 'probability_of_success', 'support', 'lift', 'improvement_over_random']].sort_values(by='improvement_over_random', ascending=False).head(10))
     else:
         print("\nNo high-confidence rules with 'success_1' as consequent were identified that outperform random selection.")
-
+    """
 
 
 
@@ -346,6 +322,19 @@ def calculate_success_probability(feature_combination, founders_data_sample):
     real_world_prob = 1.9
     random_success_prob = (founders_data_sample['success'] == 1).mean() * 100
 
+    # Filter out rows with missing values for any feature in the combination
+    valid_data_mask = pd.Series(True, index=founders_data_sample.index)
+    for feature in feature_combination:
+        feature = feature.strip()
+        if feature.startswith('not_'):
+            feature = feature[4:]
+        if feature in founders_data_sample.columns:
+            valid_data_mask &= founders_data_sample[feature].notna()
+        else:
+            print("Error: column not found in dataset")
+    
+    founders_data_sample = founders_data_sample[valid_data_mask]
+
     # Create mask for the specified feature combination
     mask = pd.Series(True, index=founders_data_sample.index)
     for feature in feature_combination:
@@ -357,11 +346,7 @@ def calculate_success_probability(feature_combination, founders_data_sample):
             
             # Handle boolean values (including string 'True'/'False')
             if founders_data_sample[feature].dtype == bool or founders_data_sample[feature].dtype == object:
-                # Convert to boolean if it's a string
-                if founders_data_sample[feature].dtype == object:
-                    feature_mask = (founders_data_sample[feature].astype(str).str.lower() == 'true')
-                else:
-                    feature_mask = (founders_data_sample[feature] == True)
+                feature_mask = (founders_data_sample[feature].astype(str).str.lower() == 'true')
             
             # Handle numeric values
             elif pd.api.types.is_numeric_dtype(founders_data_sample[feature]):
@@ -371,17 +356,12 @@ def calculate_success_probability(feature_combination, founders_data_sample):
             mask = mask & feature_mask
         elif feature.startswith('not_'):
             feature = feature[4:]
-            feature = feature[4:]
             if feature in founders_data_sample.columns:
                 feature_mask = pd.Series(False, index=founders_data_sample.index)
             
             # Handle boolean values (including string 'True'/'False')
                 if founders_data_sample[feature].dtype == bool or founders_data_sample[feature].dtype == object:
-                    # Convert to boolean if it's a string
-                    if founders_data_sample[feature].dtype == object:
-                        feature_mask = (founders_data_sample[feature].astype(str).str.lower() == 'false')
-                    else:
-                        feature_mask = (founders_data_sample[feature] == False)
+                    feature_mask = (founders_data_sample[feature].astype(str).str.lower() == 'false')
                 
                 # Handle numeric values
                 elif pd.api.types.is_numeric_dtype(founders_data_sample[feature]):
@@ -399,6 +379,7 @@ def calculate_success_probability(feature_combination, founders_data_sample):
     # Calculate success probability
     success_count = filtered_data['success'].sum()
     success_probability = (success_count / len(filtered_data)) * 100 if len(filtered_data) > 0 else 0
+    print(f"feature combination: {feature_combination} ,    Number of founders who succeeded: {success_count} out of {len(filtered_data)}")
     return success_probability, len(filtered_data)  # Return both probability and count
 
 """
@@ -456,7 +437,17 @@ def calculate_failure_probability(feature_combination, founders_data_sample):
     # Calculate random failure probability
     real_world_prob = 89.1
     random_failure_prob = (founders_data_sample['success'] == 0).mean() * 100
-        # Filter out successful founders to focus on failures
+    
+    # Filter out rows with missing values for any feature in the combination
+    valid_data_mask = pd.Series(True, index=founders_data_sample.index)
+    for feature in feature_combination:
+        feature = feature.strip()
+        if feature.startswith('not_'):
+            feature = feature[4:]
+        if feature in founders_data_sample.columns:
+            valid_data_mask &= founders_data_sample[feature].notna()
+    
+    founders_data_sample = founders_data_sample[valid_data_mask]
 
 
     # Create mask for the specified feature combination
@@ -471,11 +462,7 @@ def calculate_failure_probability(feature_combination, founders_data_sample):
             
             # Handle boolean values (including string 'True'/'False')
                 if founders_data_sample[feature].dtype == bool or founders_data_sample[feature].dtype == object:
-                    # Convert to boolean if it's a string
-                    if founders_data_sample[feature].dtype == object:
-                        feature_mask = (founders_data_sample[feature].astype(str).str.lower() == 'false')
-                    else:
-                        feature_mask = (founders_data_sample[feature] == False)
+                    feature_mask = (founders_data_sample[feature].astype(str).str.lower() == 'false')
                 
                 # Handle numeric values
                 elif pd.api.types.is_numeric_dtype(founders_data_sample[feature]):
@@ -491,11 +478,7 @@ def calculate_failure_probability(feature_combination, founders_data_sample):
             
             # Handle boolean values (including string 'True'/'False')
             if founders_data_sample[feature].dtype == bool or founders_data_sample[feature].dtype == object:
-                # Convert to boolean if it's a string
-                if founders_data_sample[feature].dtype == object:
-                    feature_mask = (founders_data_sample[feature].astype(str).str.lower() == 'true')
-                else:
-                    feature_mask = (founders_data_sample[feature] == True)
+                feature_mask = (founders_data_sample[feature].astype(str).str.lower() == 'true')
             
             # Handle numeric values
             elif pd.api.types.is_numeric_dtype(founders_data_sample[feature]):
@@ -513,37 +496,8 @@ def calculate_failure_probability(feature_combination, founders_data_sample):
     
     # Calculate failure probability
     failure_probability = (len(failed_filtered_data) / len(filtered_data)) * 100 if len(filtered_data) > 0 else 0
+
+    print(f"feature combination: {feature_combination} ,    Number of founders who failed: {len(failed_filtered_data)} out of {len(filtered_data)}")
     return failure_probability, len(filtered_data)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run association rule mining with specified feature combination size.')
-    parser.add_argument('--feature', type=int, default=2, help='Number of features in the combination (e.g., 2 for pairwise combinations)')
-    parser.add_argument('--min_sample', type=int, default=20, help='Minimum number of samples for Apriori algorithm')
-    parser.add_argument('--sample_size', type=int, default=1000, help='Number of samples to take from the dataset')
-    parser.add_argument('--base_feature', type=str, default='None', help='Base feature to filter itemsets (e.g., specific feature name)')
-    parser.add_argument('--feature_value', type=str, default='None', help='Value of the base feature to filter itemsets (e.g., specific value of the feature)')
-    parser.add_argument('--exclude_features', type=str, default='', help='Comma-separated list of features to exclude from analysis')
-    parser.add_argument('--num_results', type=int, default=10, help='Number of results to display in the console')
-    args = parser.parse_args()
-    main(args.feature, args.min_sample, args.sample_size, args.base_feature, args.feature_value, args.exclude_features)
-
-    # examples of how to use
-
-    # Example: This would return the top 20 features (single feature because feature=1) with a minimum sample of 15
-    # So we can find most influential single features
-    # python arm.py --feature=1 --min_sample=15 --sample_size=8800 --num_results=20
-
-    # Example: python arm.py --feature=2 --min_sample=15 --sample_size=8800 --num_results=20
-    # This would find the top 20 2-feature combinations with highest probability of success
-
-    # Example: This would return 2 feature combinations with Google experience with the highest probability of success
-    # python arm.py --feature=2 --min_sample=15 --sample_size=8800 --num_results=20 --base_feature=google_experience --feature_value=1
-
-    # Example: This would return best 2 feature combinations while excluding certain features
-    # python arm.py --feature=2 --min_sample=15 --sample_size=8800 --num_results=20 --exclude_features=previous_startup_funding_experience_as_ceo,nasdaq_leadership,previous_startup_funding_experience_as_nonceo,acquisition_experience,ipo_experience,persona
-
-    # Example usage:
-    # Example features to investigate
-    
-    # Display results

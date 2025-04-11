@@ -70,11 +70,11 @@ def generate_base_problog_program(iteration_number):
         "international_work_experience", "worked_at_military", "big_tech_position", "worked_at_consultancy", "worked_at_bank",
         "press_media_coverage_count", "vc_experience", "angel_experience", "quant_experience",
         "board_advisor_roles", "tier_1_vc_experience", "startup_experience", "ceo_experience", "investor_quality_prior_startup",
-        "previous_startup_funding_experience", "ipo_experience", "num_acquisitions", "domain_expertise", "skill_relevance", "yoe"
+        "previous_startup_funding_experience", "ipo_experience", "num_acquisitions", "domain_expertise", "skill_relevance"
     ]
 
     rules = read_preprocessed_rules(iteration_number)
-    with open(f'problog_program_base_{iteration_number}.pl', 'w') as f:
+    with open(f'problog_programs/problog_program_base_{iteration_number}.pl', 'w') as f:
         for rule in rules:
             is_success, feature_str, probability = rule
             # Clean up feature string by removing brackets and quotes
@@ -117,7 +117,7 @@ def generate_problog_program(iteration_number, founder_info, program_file):
         "international_work_experience", "worked_at_military", "big_tech_position", "worked_at_consultancy", "worked_at_bank",
         "press_media_coverage_count", "vc_experience", "angel_experience", "quant_experience",
         "board_advisor_roles", "tier_1_vc_experience", "startup_experience", "ceo_experience", "investor_quality_prior_startup",
-        "previous_startup_funding_experience", "ipo_experience", "num_acquisitions", "domain_expertise", "skill_relevance", "yoe"
+        "previous_startup_funding_experience", "ipo_experience", "num_acquisitions", "domain_expertise", "skill_relevance"
     ]
 
     
@@ -166,11 +166,6 @@ def generate_problog_program(iteration_number, founder_info, program_file):
                     prob = 0
                 else:
                     prob = (value - attribute_limits[attr][0])/(attribute_limits[attr][1] - attribute_limits[attr][0])
-            elif attr == "yoe":
-                if value > 10:
-                    prob = 1
-                else:
-                    prob = 0
             else:
                 prob = 1
             
@@ -178,7 +173,7 @@ def generate_problog_program(iteration_number, founder_info, program_file):
             f.write(f"{prob}::{attr}.\n")
     
         # First copy the base problog program
-    base_program_path = f'problog_program_base_{iteration_number}.pl'
+    base_program_path = f'problog_programs/problog_program_base_{iteration_number}.pl'
     with open(base_program_path, 'r') as base_file:
         base_content = base_file.read()
     

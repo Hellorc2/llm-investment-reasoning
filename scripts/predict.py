@@ -1,12 +1,14 @@
-from G_generate_problog import generate_problog_program, generate_base_problog_program
+from generate_problog import generate_problog_program, generate_base_problog_program
 from multiprocessing import Pool, cpu_count
 import pandas as pd
 import os
 from problog.program import PrologString
 from problog import get_evaluatable
+import numpy as np
+import matplotlib.pyplot as plt
 
 
-def predict_success_of_founder(row_number, founder_info, iteration_index, threshold_success, threshold_failure):
+def predict_success_of_founder(row_number, founder_info, iteration_index):
     # Convert pandas Series to dictionary
     founder_dict = founder_info.to_dict()
     
@@ -14,8 +16,8 @@ def predict_success_of_founder(row_number, founder_info, iteration_index, thresh
     import os
     from filelock import FileLock
     process_id = os.getpid()
-    program_file = f'problog_program_{process_id}.pl'
-    lock_file = f'problog_program_{process_id}.pl.lock'
+    program_file = f'problog_programs/problog_program_{process_id}.pl'
+    lock_file = f'problog_programs/problog_program_{process_id}.pl.lock'
     
     try:
         # Create a lock for this process's file
@@ -61,101 +63,18 @@ def predict_success_of_founder(row_number, founder_info, iteration_index, thresh
 
 
 
-
-def predict_series(csv_file, iteration_index, threshold_success = 0.2, threshold_failure = 0.999):
-    """Process rows serially instead of in parallel"""
+def predict(csv_file, iteration_index, iterative = False):
     # Read the data using pandas
     data = pd.read_csv(csv_file)
     
+    if not iterative:
     # Clear prediction.csv before starting predictions
-    import shutil
-    try:
-        shutil.copyfile(f'prediction_{iteration_index}.csv', f'prediction_copy_{iteration_index}.csv')
-    except FileNotFoundError:
-        pass  # Ignore if original file doesn't exist yet
-    
-    with open(f'prediction_{iteration_index}.csv', 'w') as f:
-        f.write('row_number,success_prob,failure_prob,is_success\n')
-    
-    # Track rows that need reprocessing
-    rows_to_reprocess = []
-    
-    # Process rows serially
-    total_rows = len(data)
-    for idx, row in data.iterrows():
+        import shutil
         try:
-            result = predict_success_of_founder(idx, row, iteration_index, threshold_success, threshold_failure)
-            
-            # Parse the result string
-            row_num, success_prob, failure_prob, is_success = result.strip().split(',')
-            success_prob = float(success_prob)
-            failure_prob = float(failure_prob)
-            
-            # If success_prob is 0 and failure_prob is 1, mark for reprocessing
-            if success_prob == 0.0 and failure_prob == 1.0:
-                rows_to_reprocess.append(int(row_num))
-            
-            # Write result immediately
-            with open(f'prediction_{iteration_index}.csv', 'a') as f:
-                f.write(result)
-            
-            print(f"Processed row {idx} out of {total_rows}")
-            
-        except Exception as e:
-            print(f"Error processing row {idx}: {str(e)}")
-            rows_to_reprocess.append(int(idx))
-    
-    # Reprocess failed rows if any
-    if rows_to_reprocess:
-        print(f"\nReprocessing {len(rows_to_reprocess)} rows with zero success probability...")
+            shutil.copyfile(f'predictions/prediction_{iteration_index}.csv', f'predictions/prediction_copy_{iteration_index}.csv')
+        except FileNotFoundError:
+            pass  # Ignore if original file doesn't exist yet
         
-        # Process failed rows serially
-        reprocess_results = []
-        for idx in rows_to_reprocess:
-            try:
-                result = predict_success_of_founder(idx, data.iloc[idx], iteration_index, threshold_success, threshold_failure)
-                reprocess_results.append(result)
-                print(f"Reprocessed row {idx}")
-            except Exception as e:
-                print(f"Error reprocessing row {idx}: {str(e)}")
-        
-        # Update the results in the CSV file
-        with open(f'prediction_{iteration_index}.csv', 'r') as f:
-            lines = f.readlines()
-        
-        # Create a mapping of row numbers to new results
-        result_map = {}
-        for result in reprocess_results:
-            row_num, _, _, _ = result.strip().split(',')
-            result_map[int(row_num)] = result
-        
-        # Update the lines with new results
-        for i, line in enumerate(lines):
-            if i == 0:  # Skip header
-                continue
-            row_num = int(line.split(',')[0])
-            if row_num in result_map:
-                lines[i] = result_map[row_num]
-        
-        # Write updated results back to file
-        with open(f'prediction_{iteration_index}.csv', 'w') as f:
-            f.writelines(lines)
-        
-        print(f"Reprocessing complete. Updated {len(rows_to_reprocess)} rows.")
-    
-    print("finished")
-
-def predict(csv_file, iteration_index, threshold_success = 0.2, threshold_failure = 0.999):
-    # Read the data using pandas
-    data = pd.read_csv(csv_file)
-    
-    # Clear prediction.csv before starting predictions
-    import shutil
-    try:
-        shutil.copyfile(f'prediction_{iteration_index}.csv', f'prediction_copy_{iteration_index}.csv')
-    except FileNotFoundError:
-        pass  # Ignore if original file doesn't exist yet
-    
     generate_base_problog_program(iteration_index)
 
     # Create list of (index, row) tuples
@@ -170,7 +89,7 @@ def predict(csv_file, iteration_index, threshold_success = 0.2, threshold_failur
     try:
         # Process all rows in parallel
         results = pool.starmap(predict_success_of_founder, 
-                             [(idx, row, iteration_index, threshold_success, threshold_failure) 
+                             [(idx, row, iteration_index) 
                               for idx, row in rows_to_process])
         
         # Check results and track rows that need reprocessing
@@ -192,7 +111,7 @@ def predict(csv_file, iteration_index, threshold_success = 0.2, threshold_failur
             # Process failed rows serially
             reprocess_results = []
             for idx in rows_to_reprocess:
-                result = predict_success_of_founder(idx, data.iloc[idx], iteration_index, threshold_success, threshold_failure)
+                result = predict_success_of_founder(idx, data.iloc[idx], iteration_index)
                 reprocess_results.append(result)
                 print(f"Reprocessed row {idx}")
             
@@ -207,16 +126,22 @@ def predict(csv_file, iteration_index, threshold_success = 0.2, threshold_failur
                 row_num = int(result.strip().split(',')[0])
                 if row_num in result_map:
                     results[i] = result_map[row_num]
-        
-        # Write all results at once
-        print(f"\nWriting {len(results)} results to prediction_{iteration_index}.csv")
-        with open(f'prediction_{iteration_index}.csv', 'w') as f:
-            f.write('row_number,success_prob,failure_prob,is_success\n')
-            f.writelines(results)
+        if not iterative:
+            # Write all results at once
+            print(f"\nWriting {len(results)} results to prediction_{iteration_index}.csv")
+            with open(f'predictions/prediction_{iteration_index}.csv', 'w') as f:
+                f.write('row_number,success_prob,failure_prob,is_success\n')
+                f.writelines(results)
+        else:
+            print(f"\nWriting {len(results)} results to prediction_iterative_{iteration_index}.csv")
+            with open(f'predictions_iterative/prediction_iterative_{iteration_index}.csv', 'w') as f:
+                f.write('row_number,success_prob,failure_prob,is_success\n')
+                f.writelines(results)
+
         
         # Verify the file was written correctly
         try:
-            df = pd.read_csv(f'prediction_{iteration_index}.csv')
+            df = pd.read_csv(f'predictions/prediction_{iteration_index}.csv')
             print(f"Verified file contains {len(df)} rows")
         except Exception as e:
             print(f"Error verifying file: {str(e)}")
@@ -228,8 +153,11 @@ def predict(csv_file, iteration_index, threshold_success = 0.2, threshold_failur
     
     print("finished")
 
-def manual_prediction_analysis(iteration_index, threshold_success = 0.3, threshold_failure = 1):
-    predictions_df = pd.read_csv(f'prediction_{iteration_index}.csv')
+def prediction_analysis(iteration_index, threshold_success = 0.3, threshold_failure = 1, iterative = False):
+    if not iterative:
+        predictions_df = pd.read_csv(f'predictions/prediction_{iteration_index}.csv')
+    else:
+        predictions_df = pd.read_csv(f'predictions_iterative/prediction_iterative_{iteration_index}.csv')
     # Add a predictions column based on thresholds
     predictions_df['prediction'] = ((predictions_df['success_prob'] > threshold_success) & 
                                   (predictions_df['failure_prob'] < threshold_failure)).astype(int)
@@ -237,7 +165,7 @@ def manual_prediction_analysis(iteration_index, threshold_success = 0.3, thresho
     # Calculate accuracy metrics
     total_predictions = len(predictions_df)
     correct_predictions = sum(predictions_df['prediction'] == predictions_df['is_success'])
-    accuracy = correct_predictions / total_predictions
+    accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0
 
     # Calculate precision
     true_positives = sum((predictions_df['prediction'] == 1) & (predictions_df['is_success'] == 1))
@@ -245,7 +173,9 @@ def manual_prediction_analysis(iteration_index, threshold_success = 0.3, thresho
     false_negatives = sum((predictions_df['prediction'] == 0) & (predictions_df['is_success'] == 1))
     precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0
     recall = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0
+    f_score = (5/4) / ((1/precision) + (1/4)*(1/recall)) if (precision + recall) > 0 else 0
     
+    """
     print(f"\nPrediction Summary for success threshold {threshold_success} and failure threshold {threshold_failure}:")
     print(f"Total predictions: {total_predictions}")
     print(f"Correct predictions: {correct_predictions}")
@@ -254,6 +184,8 @@ def manual_prediction_analysis(iteration_index, threshold_success = 0.3, thresho
     print(f"Recall: {recall:.2%}")
     print(f"Number of true positives: {true_positives}")
     print(f"Number of false positives: {false_positives}")
+"""
+
     """
     with open(f'prediction_summary_{iteration_index}.txt', 'a') as f:
         f.write(f"Prediction Summary for Iteration {iteration_index}\n")
@@ -267,25 +199,74 @@ def manual_prediction_analysis(iteration_index, threshold_success = 0.3, thresho
         f.write(f"Number of false positives: {false_positives}\n")
     """
     
-    return precision,accuracy, recall
+    return precision, accuracy, recall, f_score, true_positives
 
-def plot_precision_analysis(iterations, failure_thresholds = [0.999, 0.9999, 0.99999]):
-    import numpy as np
-    import matplotlib.pyplot as plt
-
-    # Store results for plotting
+def get_best_models(iterations, success_thresholds = np.arange(0.05, 0.95, 0.05), failure_thresholds = np.append(np.arange(0.8, 1, 0.02),[0.999,0.9999]), iterative = False):
+        # Store results for plotting
     results = []
     for iteration_index in iterations:
-        for j in failure_thresholds:
-            for i in np.arange(0.05, 0.95, 0.05):
-                precision,accuracy,recall = manual_prediction_analysis(iteration_index, i, j)
+        for i in success_thresholds:
+            for j in failure_thresholds:
+                precision,accuracy,recall, f_score, true_positives = prediction_analysis(iteration_index, i, j, iterative)
                 results.append({
                     'iteration': iteration_index,
                     'threshold_success': i,
                     'threshold_failure': j,
                     'precision': precision,
                     'accuracy': accuracy,
-                    'recall': recall
+                    'recall': recall,
+                    'f_score': f_score,
+                    'true_positives': true_positives
+                })
+
+    # Convert results to DataFrame for easier plotting
+    results_df = pd.DataFrame(results)
+
+    best_models_str = ""
+        # For each iteration, save top 3 results to a file
+    for iteration in iterations:
+        # Create the output string
+        output = f"Iteration {iteration} - Top 3 configurations:\n"
+        output += "-" * 50 + "\n"
+        
+        top_3_results = results_df[results_df['iteration'] == iteration].sort_values('f_score', ascending=False).head(3)
+        for i, result in enumerate(top_3_results.itertuples(), 1):
+            output += f"#{i}:\n"
+            output += f"F-score: {result.f_score:.3f}\n"
+            output += f"Success Threshold: {result.threshold_success:.2f}\n"
+            output += f"Failure Threshold: {result.threshold_failure}\n"
+            output += f"Precision: {result.precision:.3f}\n"
+            output += f"Recall: {result.recall:.3f}\n"
+            output += "\n"
+        
+        # Save to file
+        filename = f"predictions_iterative/top_3_results_iteration_{iteration:03d}.txt"
+        with open(filename, 'w') as f:
+            f.write(output)
+        
+        # Also print to console
+        print(output)
+        best_models_str += output
+
+    return best_models_str
+
+def plot_precision_analysis(iterations, failure_thresholds = [0.999, 0.9999, 0.99999], iterative = False):
+    import matplotlib.pyplot as plt
+    # Store results for plotting
+    results = []
+    for iteration_index in iterations:
+        for j in failure_thresholds:
+            for i in np.arange(0.05, 0.95, 0.05):
+                precision,accuracy,recall, f_score, true_positives = prediction_analysis(iteration_index, i, j)
+                results.append({
+                    'iteration': iteration_index,
+                    'threshold_success': i,
+                    'threshold_failure': j,
+                    'precision': precision,
+                    'accuracy': accuracy,
+                    'recall': recall,
+                    'f_score': f_score,
+                    'true_positives': true_positives
                 })
 
     # Convert results to DataFrame for easier plotting
@@ -314,28 +295,6 @@ def plot_precision_analysis(iterations, failure_thresholds = [0.999, 0.9999, 0.9
         plt.savefig(f'precision_analysis_failure_threshold_{j}.png')
         plt.close()
 
-    for j in failure_thresholds:
-        plt.figure(figsize=(12, 6))
-        
-        # Filter data for this failure threshold
-        threshold_data = results_df[results_df['threshold_failure'] == j]
-        
-        # Plot lines for each iteration
-        for iteration in threshold_data['iteration'].unique():
-            iteration_data = threshold_data[threshold_data['iteration'] == iteration]
-            plt.plot(iteration_data['threshold_success'], iteration_data['accuracy'], 
-                    label=f'Iteration {iteration}', marker='o')
-        
-        plt.xlabel('Success Threshold')
-        plt.ylabel('Accuracy')
-        plt.title(f'Accuracy vs Success Threshold (Failure Threshold = {j})')
-        plt.legend()
-        plt.grid(True)
-        
-        # Save the plot
-        plt.savefig(f'accuracy_analysis_failure_threshold_{j}.png')
-        plt.close()
-
 
     # Print tables for each iteration and failure threshold
     print("\nResults Tables:")
@@ -344,94 +303,17 @@ def plot_precision_analysis(iterations, failure_thresholds = [0.999, 0.9999, 0.9
     for iteration in iterations:
         print(f"\nIteration {iteration}:")
         print("-" * 80)
-        print(f"{'Failure Threshold':<20} {'Success Threshold':<20} {'Precision':<10} {'Recall':<10} {'True Positives':<15} {'False Positives':<15}")
+        print(f"{'Failure Threshold':<20} {'Success Threshold':<20} {'Precision':<10} {'Recall':<10} {'True Positives':<15}")
         print("-" * 80)
         
         for failure_threshold in failure_thresholds:
             for success_threshold in np.arange(0.05, 0.95, 0.05):
-                # Get predictions for this combination
-                predictions_df = pd.read_csv(f'prediction_{iteration}.csv')
-                predictions_df['prediction'] = ((predictions_df['success_prob'] > success_threshold) & 
-                                              (predictions_df['failure_prob'] < failure_threshold)).astype(int)
+
+                precision, accuracy, recall, f_score, true_positives = prediction_analysis(iteration, success_threshold, failure_threshold, iterative)
                 
-                true_positives = sum((predictions_df['prediction'] == 1) & (predictions_df['is_success'] == 1))
-                false_positives = sum((predictions_df['prediction'] == 1) & (predictions_df['is_success'] == 0))
-                precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0
-                false_negatives = sum((predictions_df['prediction'] == 0) & (predictions_df['is_success'] == 1))
-                recall = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0
-                
-                print(f"{failure_threshold:<20} {success_threshold:<20.2f} {precision:<10.3f} {recall:<10.3f} {true_positives:<15d} {false_positives:<15d}")
+                print(f"{failure_threshold:<20} {success_threshold:<20.2f} {precision:<10.3f} {recall:<10.3f} {true_positives:<15d}")
         print("-" * 80)
     print("=" * 80)
 
-
-
-def average_prediction(iterations):
-    """
-    Calculate average success and failure probabilities across iterations.
-    
-    Args:
-        iterations (list): List of iteration numbers to average over
-        
-    Returns:
-        pd.DataFrame: DataFrame with averaged probabilities
-    """
-    # Read first prediction file to get number of rows
-    base_df = pd.read_csv(f'prediction_{iterations[0]}.csv')
-    num_rows = len(base_df)
-    
-    # Initialize arrays to store sums
-    success_sums = np.zeros(num_rows)
-    failure_sums = np.zeros(num_rows)
-    
-    # Sum up probabilities across iterations
-    for iteration in iterations:
-        df = pd.read_csv(f'prediction_{iteration}.csv')
-        success_sums += df['success_prob'].values
-        failure_sums += df['failure_prob'].values
-    
-    # Calculate averages
-    avg_success = success_sums / len(iterations)
-    avg_failure = failure_sums / len(iterations)
-    
-    # Create output dataframe
-    result_df = pd.DataFrame({
-        'success_prob': avg_success,
-        'failure_prob': avg_failure,
-        'is_success': base_df['is_success']
-    })
-    
-    # Save to CSV file
-    result_df.to_csv('prediction_-1.csv', index=False)
-    
-    return result_df
-
-def max_prediction(iterations):
-    base_df = pd.read_csv(f'prediction_{iterations[0]}.csv')
-    num_rows = len(base_df)
-    
-    # Initialize arrays to store max success and min failure
-    max_success = np.zeros(num_rows)
-    min_failure = np.ones(num_rows)
-    
-    # Find max success and min failure across iterations
-    for iteration in iterations:
-        df = pd.read_csv(f'prediction_{iteration}.csv')
-        max_success = np.maximum(max_success, df['success_prob'].values)
-        min_failure = np.minimum(min_failure, df['failure_prob'].values)
-
-    
-    # Create output dataframe
-    result_df = pd.DataFrame({
-        'success_prob': max_success,
-        'failure_prob': min_failure,
-        'is_success': base_df['is_success']
-    })
-    
-    # Save to CSV file
-    result_df.to_csv('prediction_-1.csv', index=False)
-    
-    return result_df
-
 if __name__ == "__main__":
-    predict('test_data_reduced.csv', 19)
+    predict(csv_file = 'test_data_reduced.csv', iteration_index = 3, iterative = True)

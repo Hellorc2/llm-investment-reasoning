@@ -6,11 +6,13 @@ import numpy as np
 from multiprocessing import Pool
 from datetime import datetime
 from predict import *
+from evaluate import evaluate
+from llm_reasoning import logical_statements_preprocess, modify_analysis_based_on_advice
 
 
 def analyze_single_founder(args):
     index, row, model = args
-    from C_insight_generation import analyze_founder
+    from insight_generation import analyze_founder
     
     print(f"Process {os.getpid()} starting analysis of founder {row['founder_name']}")
     
@@ -22,7 +24,7 @@ def analyze_single_founder(args):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     
     # Save the result
-    from C_insight_generation import save_result
+    from scripts.insight_generation import save_result
     save_result(timestamp, result)
     
     print(f"Process {os.getpid()} completed analysis of founder {row['founder_name']}")
@@ -34,7 +36,7 @@ def analyze_single_founder(args):
     }
 
 def generate_insights_series(model="deepseek", iterative = False, iterative_index = 0):
-    from C_insight_generation import analyze_founder, save_result
+    from scripts.insight_generation import analyze_founder, save_result
 
     if iterative:
         founder_data = pd.read_csv(f'iterative_train_data/train_batch_{iterative_index:03d}.csv')
@@ -47,7 +49,7 @@ def generate_insights_series(model="deepseek", iterative = False, iterative_inde
     
 
 def generate_insights(model="deepseek", iterative = False, iterative_index = 0):
-    from C_insight_generation import analyze_founder, save_result
+    from scripts.insight_generation import analyze_founder, save_result
 
     if iterative:
         founder_data = pd.read_csv(f'iterative_train_data/train_batch_{iterative_index:03d}.csv')
@@ -96,7 +98,7 @@ def generate_insights(model="deepseek", iterative = False, iterative_index = 0):
 
 
 def insight_analysis(iterative = False, iterative_index = 0):
-    from Ea_llm_reasoning import analyze_insights, analyze_insights_in_groups, logical_statements_preprocess
+    from scripts.llm_reasoning import analyze_insights, analyze_insights_in_groups, logical_statements_preprocess
     if iterative:
         analysis_results = analyze_insights_in_groups(f'results/founder_insights_final_{iterative_index:03d}.csv', model="deepseek")
     else:
@@ -113,23 +115,44 @@ def iterative_training_step(iterative_index=0, model="deepseek"):
 
     founders_data_sample = pd.read_csv('founder_data_ml.csv').sample(n=1000)
 
+    # Save the sampled data for this iteration
+    output_path = f'founder_data_sample_ml.csv'
+    founders_data_sample.to_csv(output_path, index=False)
+
+    
     if iterative_index == 0:
-        generate_insights(iterative=True, iterative_index=0)
+        #generate_insights(iterative=True, iterative_index=0)
         insight_analysis(iterative=True, iterative_index=0)
+        save_iterative_results_1(iterative_index)
+    elif iterative_index == 1:
+        #generate_new_insights(iterative_index = iterative_index)
+        logical_statements_preprocess(model="deepseek")
+        save_iterative_results_1(iterative_index)
     else:
         generate_new_insights(iterative_index = iterative_index)
+        logical_statements_preprocess(model="deepseek")
+        save_iterative_results_1(iterative_index)
+        """
+        evaluate(iterative_index = iterative_index)
+        modify_analysis_based_on_advice(iterative_index = iterative_index)
+        logical_statements_preprocess(input_file = f'iterative_training_results/iteration_{iterative_index:03d}_preprocessed.txt',
+                                      output_file = f'iterative_training_results/iteration_{iterative_index:03d}_preprocessed.txt', model="deepseek")
+        """
+    
 
-
-    raw_probability_from_logical_statements(founders_data_sample, iterative_index = iterative_index)
-    reflect_logical_statement(iterative_index = iterative_index)
-    save_iterative_results(iterative_index)
+    success_rule_hint = raw_probability_from_logical_statements(founders_data_sample, iterative_index = iterative_index)
+    reflect_logical_statement(iterative_index = iterative_index, success_rule_hint = success_rule_hint)
+    save_iterative_results_2(iterative_index)
 
 
 def raw_probability_from_logical_statements(founders_data_sample, iterative_index = 0):
-    from arm import calculate_success_probability, calculate_failure_probability
+    from arm import calculate_success_probability, calculate_failure_probability, arm_success
     
-    with open(f'logical_statements_preprocessed.txt', 'r') as input_file, \
-            open(f'logical_statements_polished.txt', 'w') as output_file:
+    success_rule_hint = arm_success(founders_data_sample, feature_combination = 2, min_sample = 10)
+    print(success_rule_hint)
+    
+    with open(f'logical_statements/logical_statements_preprocessed.txt', 'r') as input_file, \
+            open(f'logical_statements/logical_statements_calibrated.txt', 'w') as output_file:
         for line in input_file:
             line = line.strip()
             if line:  # Skip empty lines
@@ -142,26 +165,25 @@ def raw_probability_from_logical_statements(founders_data_sample, iterative_inde
                         result = f"Success rule: {parts[1:-1]}, probability: not enough samples"
                     else:
                         result = f"Success rule: {parts[1:-1]}, probability: {success_probability/100:.2f}"
-                    print(result)
                     output_file.write(result + '\n')
                 elif parts[0] == '0': 
                     # For failure rules, call calculate_failure_probability
                     failure_probability, len_filtered_data = calculate_failure_probability(parts[1:-1], founders_data_sample)
-                    if len_filtered_data < 10:
+                    if len_filtered_data < 90:
                         result = f"Failure rule: {parts[1:-1]}, probability: not enough samples"
                     else:
                         result = f"Failure rule: {parts[1:-1]}, probability: {failure_probability/100:.2f}"
-                    print(result)
                     output_file.write(result + '\n')
-
-def reflect_logical_statement(model="deepseek", iterative_index = 0):
+    return success_rule_hint
+def reflect_logical_statement(model="deepseek", success_rule_hint = "", iterative_index = 0):
     # Read the polished logical statements
-    with open(f'logical_statements_polished.txt', 'r') as f:
-        polished_statements = f.read()
+    with open(f'logical_statements/logical_statements_calibrated.txt', 'r') as f:
+        calibrated_statements = f.read()
     
-    with open(f'logical_statements_preprocessed.txt', 'r') as f:
+    with open(f'logical_statements/logical_statements_preprocessed.txt', 'r') as f:
         logical_statements = f.read()
 
+    
     # Prepare prompts for LLM analysis
     system_prompt = """You are an vc analyst analyzing startup success patterns. You had intuition about the success of a startup based on the founder's 
     attributes. Now you want to see if the probabilities you assigned to the rules are consistent with probability of success calculated from the data."""
@@ -172,13 +194,18 @@ def reflect_logical_statement(model="deepseek", iterative_index = 0):
 
     Now I will show you the same rules with the probabilities calculated from the data:
 
-    {polished_statements}
+    {calibrated_statements}
 
     Please reflect on your intuition by comparing the probabilities calculated from the data with the probabilities you assigned to the rules. 
     If the probabilities are not consistent, try to understand why and adjust your intuition. If the probability says "not enough samples", that means
-    that the rule is satisfied very rarely, so you might have to think about whether your original logic came from an outliner. You should be particularly
-    worried about success rule that have lower probability than a failure rule and vice versa - consider swapping out the rule entirely. Your end goal 
-    is to produce a modified version of the original rules that are more accurate. Return me the modified rules in the same format as the original rules.
+    that the rule is satisfied very rarely, so you might have to think about whether your original logic came from an outliner. Your end goal 
+    is to produce a modified version of the original rules that are more accurate. 
+    
+    Also, you are optionally given one high-probability success rule discovered from the data - consider incorporating it into your rules:
+
+    {success_rule_hint}
+    
+    Return me the modified rules in the same format as the original rules.
     Note that you are free to delete or modify the original rules, but not allowed to add new rules."""
 
     # Get LLM response
@@ -193,42 +220,46 @@ def reflect_logical_statement(model="deepseek", iterative_index = 0):
     print(analysis)
 
     # Write the LLM's reflected analysis to a new file
-    with open(f'logical_statements_reflected.txt', 'w') as f:
+    with open(f'logical_statements/logical_statements_reflected.txt', 'w') as f:
         f.write(analysis)
 
     return analysis
 
-def save_iterative_results(iterative_index):
+def save_iterative_results_1(iterative_index):
     # Create directory if it doesn't exist
     os.makedirs('iterative_training_results', exist_ok=True)
 
     # Save logical statements
     with open(f'iterative_training_results/iteration_{iterative_index:03d}_logical_statements.txt', 'w') as f:
-        with open('logical_statements.txt', 'r') as source:
+        with open('logical_statements/logical_statements.txt', 'r') as source:
             f.write(source.read())
 
     with open(f'iterative_training_results/iteration_{iterative_index:03d}_preprocessed.txt', 'w') as f:
-        with open('logical_statements_preprocessed.txt', 'r') as source:
+        with open('logical_statements/logical_statements_preprocessed.txt', 'r') as source:
             f.write(source.read())
 
 
-    # Save polished statements
-    with open(f'iterative_training_results/iteration_{iterative_index:03d}_polished.txt', 'w') as f:
-        with open('logical_statements_polished.txt', 'r') as source:
-            f.write(source.read())
 
-    # Save problog program
+
+def save_iterative_results_2(iterative_index):
+    os.makedirs('iterative_training_results', exist_ok=True)
+
+    with open(f'iterative_training_results/iteration_{iterative_index:03d}_preprocessed.txt', 'w') as f:
+        with open('logical_statements/logical_statements_preprocessed.txt', 'r') as source:
+            f.write(source.read())
+        # Save polished statements
+    with open(f'iterative_training_results/iteration_{iterative_index:03d}_calibrated.txt', 'w') as f:
+        with open('logical_statements/logical_statements_calibrated.txt', 'r') as source:
+            f.write(source.read())
 
     # Save reflected analysis
     with open(f'iterative_training_results/iteration_{iterative_index:03d}_reflected.txt', 'w') as f:
-        with open('logical_statements_reflected.txt', 'r') as source:
+        with open('logical_statements/logical_statements_reflected.txt', 'r') as source:
             f.write(source.read())
 
-
-
 def generate_new_insights(iterative_index):
-    from C_insight_generation import analyze_founder, save_result
-    from Ea_llm_reasoning import analyze_insights_in_groups, logical_statements_preprocess
+    from scripts.insight_generation import analyze_founder, save_result
+    from scripts.llm_reasoning import analyze_insights_in_groups, logical_statements_preprocess
 
 
     generate_insights(iterative=True, iterative_index=iterative_index)
@@ -241,11 +272,9 @@ def generate_new_insights(iterative_index):
             previous_analysis = f.read()
 
     analyze_insights_in_groups(f'results/founder_insights_final_{iterative_index:03d}.csv', model="deepseek", iterative=True, previous_analysis = previous_analysis)
-    logical_statements_preprocess(model="deepseek")
 
-from predict import plot_precision_analysis
-
-plot_precision_analysis(iterations = [2,3,4,10,19,20])
+if __name__ == "__main__":
+    iterative_training(starting_from = 0, model="deepseek")
 
     # Read all results files
 

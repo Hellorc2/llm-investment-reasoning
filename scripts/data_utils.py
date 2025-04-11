@@ -174,15 +174,20 @@ def split_training_data(successful_rows = 5, unsuccessful_rows = 45):
     unsuccessful = train_data[train_data['success'] == False]
     
     # Calculate number of complete batches
-    total_rows = len(train_data)
-    num_complete_batches = total_rows // (successful_rows + unsuccessful_rows)
-    remaining_rows = total_rows % (successful_rows + unsuccessful_rows)
+    num_successful_batches = len(successful) // successful_rows
+    num_unsuccessful_batches = len(unsuccessful) // unsuccessful_rows
+    num_complete_batches = min(num_successful_batches, num_unsuccessful_batches)
     
     # Create batches
     for i in range(num_complete_batches):
-        # Sample 5 successful and 45 unsuccessful rows
-        batch_successful = successful.sample(n=successful_rows)
-        batch_unsuccessful = unsuccessful.sample(n=unsuccessful_rows)
+        # Get sequential slices of data
+        start_success = i * successful_rows
+        end_success = (i + 1) * successful_rows
+        start_unsuccess = i * unsuccessful_rows
+        end_unsuccess = (i + 1) * unsuccessful_rows
+        
+        batch_successful = successful.iloc[start_success:end_success]
+        batch_unsuccessful = unsuccessful.iloc[start_unsuccess:end_unsuccess]
         
         # Combine and shuffle
         batch = pd.concat([batch_successful, batch_unsuccessful])
@@ -191,23 +196,93 @@ def split_training_data(successful_rows = 5, unsuccessful_rows = 45):
         batch.to_csv(os.path.join(data_dir, f'train_batch_{i:03d}.csv'), index=False)
     
     # Handle remaining rows as the last batch if any
-    if remaining_rows > 0:
-        # Calculate proportions for remaining rows to maintain roughly same ratio
-        n_successful = max(1, int(remaining_rows * 0.1))  # At least 1 successful
-        n_unsuccessful = remaining_rows - n_successful
-        
-        batch_successful = successful.sample(n=n_successful)
-        batch_unsuccessful = unsuccessful.sample(n=n_unsuccessful)
-        
-        last_batch = pd.concat([batch_successful, batch_unsuccessful])
+    remaining_successful = successful.iloc[num_complete_batches * successful_rows:]
+    remaining_unsuccessful = unsuccessful.iloc[num_complete_batches * unsuccessful_rows:]
+    
+    if len(remaining_successful) > 0 or len(remaining_unsuccessful) > 0:
+        last_batch = pd.concat([remaining_successful, remaining_unsuccessful])
         last_batch = last_batch.sample(frac=1).reset_index(drop=True)
         last_batch.to_csv(os.path.join(data_dir, f'train_batch_{num_complete_batches:03d}.csv'), index=False)
     
     print(f"Batches saved in: {data_dir}")
 
+def combine_test_batches():
+    """
+    Combines every four files in iterative_test_data directory and relabels them.
+    Creates new files with combined data in the same directory, with sequential batch numbers.
+    Deletes the original files after combining.
+    """
+    # Create or ensure directory exists
+    data_dir = 'iterative_test_data'
+    os.makedirs(data_dir, exist_ok=True)
+    
+    # Get all CSV files in the directory
+    test_files = sorted([f for f in os.listdir(data_dir) if f.endswith('.csv')])
+    
+    if len(test_files) < 4:
+        print("Need at least 4 files to combine")
+        return
+    
+    # Process files in groups of four
+    for batch_idx in range(0, len(test_files) // 4):
+        start_idx = batch_idx * 4
+        if start_idx + 3 >= len(test_files):
+            break  # Skip if we don't have a complete group of four
+            
+        # Read all four files
+        files = [os.path.join(data_dir, test_files[start_idx + j]) for j in range(4)]
+        dfs = [pd.read_csv(f) for f in files]
+        
+        # Combine the dataframes
+        combined_df = pd.concat(dfs, ignore_index=True)
+        
+        # Relabel the batch numbers to be sequential
+        combined_df['batch'] = batch_idx
+        
+        # Create new filename with original batch numbers
+        batch_nums = [f.split('_')[2].split('.')[0] for f in test_files[start_idx:start_idx+4]]
+        new_filename = f'test_batch_{"_".join(batch_nums)}.csv'
+        
+        # Save combined file
+        combined_df.to_csv(os.path.join(data_dir, new_filename), index=False)
+        
+        # Delete original files
+        for file in files:
+            os.remove(file)
+            print(f"Deleted {file}")
+        
+        print(f"Combined {', '.join(test_files[start_idx:start_idx+4])} into {new_filename} with batch number {batch_idx}")
 
-# Test the data loading and filtering
-if __name__ == "__main__":
-    print(get_n_filtered_rows(5, ['cleaned_founder_linkedin_data', 'cleaned_founder_cb_data', 'success']))
-    print("\nFounder Statistics:")
-    print(count_successful_founders())
+def count_successful_in_test_batch(batch_number: int = 0) -> dict:
+    """
+    Counts the number of successful and unsuccessful founders in a specific test batch
+    
+    Args:
+        batch_number: The batch number to analyze (default: 0)
+            
+    Returns:
+        Dictionary containing counts of successful and unsuccessful founders
+        Or error message if file not found
+    """
+    # Get the parent directory path
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    # Read the test batch CSV file
+    try:
+        batch_df = pd.read_csv(os.path.join(parent_dir, f'iterative_test_data/test_batch_{batch_number:03d}.csv'))
+    except FileNotFoundError:
+        return f"Error: test_batch_{batch_number:03d}.csv not found in iterative_test_data directory"
+    except Exception as e:
+        return f"Error reading CSV file: {str(e)}"
+    
+    # Count successful and unsuccessful founders
+    success_count = len(batch_df[batch_df['success'] == True])
+    failure_count = len(batch_df[batch_df['success'] == False])
+    total_count = len(batch_df)
+    
+    return {
+        'total_founders': total_count,
+        'successful_founders': success_count,
+        'unsuccessful_founders': failure_count,
+        'success_rate': f"{(success_count/total_count)*100:.2f}%"
+    }
