@@ -84,18 +84,19 @@ def evaluate(iterative_index):
     previous_policies = []
     previous_policies_with_metrics = []
 
-    test_batch = pd.read_csv(f'iterative_test_data/test_batch_{iterative_index:03d}.csv')
+    test_batch_file = f'test_data_iterative{iterative_index // 5}.csv'
 
-    for i in range(1,iterative_index + 1):
+    for i in range(iterative_index - 4,iterative_index + 1):
         with open(f'iterative_training_results/iteration_{i:03d}_preprocessed.txt', 'r') as f:
             policy = f.read()
+            print(f"reading file iterative_training_results/iteration_{i:03d}_preprocessed.txt")
             previous_policies.append(policy)
-            #predict(f'iterative_test_data/test_batch_{(iterative_index % 5):03d}.csv', i, iterative = True)
+            predict(test_batch_file, i, iterative = True)
 
             policy_with_metrics_str = f"""
                 Iteration {i:03d}:
                 Policy:
-                {previous_policies[i-1]}"""
+                {previous_policies[i-5*(iterative_index // 5)]}"""
             
             best_models_description = get_best_models([i], iterative = True)
 
@@ -124,39 +125,35 @@ def evaluate(iterative_index):
 
     {policies_with_metrics_str}.
 
-    Consider the evolution of the policies over the iterations: is it improving or getting worse? Treat precision as the primary metric, 
-    and recall as the secondary metric. The F-scores given are the F_0.5 scores, which give more weight to precision.
-    Focus on the differences between the policies: which features may have made the
-    policy better/worse? Keep in mind that the test set is relatively small, so the performance metrics may not be very reliable. Take a particular
-    interest in the policy from the last iteration: did it perform better or worse?
+    Consider the evolution of the policies over the iterations: is it improving or getting worse?     Analyse the differences in each policy carefully
+      and return me the analysis: which features may have contributed to the better/worseperformance?Treat precision as the primary metric, 
+    and recall as the secondary metric. The F-scores given are the F_0.5 scores, which give more weight to precision. If you are familiar with the 
+    idea of gradient descent, you can think of trying to figure out which direction to move the policy in to improve its performance.
+    
+    Now suggest a list of modifications to these policies that you think would improve their performance, with the above questions 
+    in mind. In particular, if the policies are on a declining path, find a way to move them back on track; if one particular policy performed well,
+     try to focus on its differences from the previous policies. If you have deleted some rules that you think are unhelpful, find 
+    inspiration in the previous policies. DO NOT come up with new rules yourself. Keep the same number of success rules and the same number of failure rules.
 
-    Now suggest a list of modifications to the policy from the last iteration that you think would improve its performance, with the above questions 
-    in mind. If the last policy was performing well, suggest some subtle changes or no changes; if it got worse, find a way to move it back on track. 
-    Keep the number of success and failure rules the same! If you have deleted some rules that you think are unhelpful, find 
-    inspiration in the previous policies. DO NOT come up with new rules yourself.
+    Based on your previous analysis, you are advised to:
+    1. avoid judging the founder traits themselves without context - try to use less of your intuition and base your analysis more on how each rule might have affected
+    the evolution of the policies.
+    2. avoid focusing on the success and failure thresholds - these don't infer useful information about the policy.
     """
 
     advice = get_llm_response(system_prompt, user_prompt)
     print(advice)
 
-
-
     # Save original preprocessed statements before any modifications
     with open(f'iterative_training_results/iteration_{iterative_index:03d}_preprocessed.txt', 'r') as source:
         with open(f'iterative_training_results/iteration_{iterative_index:03d}_preprocessed_original.txt', 'w') as dest:
             dest.write(source.read())
-    
-    with open(f'iterative_training_results/iteration_{iterative_index:03d}_preprocessed.txt', 'w') as f:
-        f.write(advice)
 
     # Save advice to evaluation file
     with open(f'iterative_training_results/iteration_{iterative_index:03d}_advice.txt', 'w') as f:
         f.write(advice)
 
-    
-
-    
-
+    return advice
 
     # Read founder profiles and combine into sample data
     

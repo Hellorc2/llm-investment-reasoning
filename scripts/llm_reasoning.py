@@ -114,8 +114,8 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
 
         If it's a negative condition (e.g. low, none, false, etc.), add a "not_" in front of the condition.
         
-        Finally,limit the number of rules to between 20 and 25 actionable and generalizable conditions. Make sure at least 12 of 
-        the rules focus on when the founder is more likely to succeed, and at least 8 of the rules focus on when the founder is more likely to fail.
+        Finally,limit the number of rules to between 20 and 25 actionable and generalizable conditions. Make sure at least 14 of 
+        the rules focus on when the founder is more likely to succeed, and at least 6 of the rules focus on when the founder is more likely to fail.
 
     """
 
@@ -161,7 +161,8 @@ def logical_statements_preprocess(input_file: str = 'logical_statements/logical_
       a list of logical statements."
     """
     
-    user_prompt = f"""Given these set of rules:
+    user_prompt = f"""Given these set of rules (if there are other text around, look for something like "proposed policy", or figure out yourself which
+    text is the set of rules):
 
     {combined_text}
 
@@ -187,8 +188,8 @@ def logical_statements_preprocess(input_file: str = 'logical_statements/logical_
     such as high, >, true, remove everything including and after the comparator; if you see a condition like this with negative characteristics such as 
     low, <, false, do the same but add not_ in front of the condition.
 
-    DOUBLE CHECK that all the conditions appear in the list of allowed conditions, or is one of the conditions with "not_" in front! If not, 
-    delete the rule.
+    DOUBLE CHECK that all the conditions appear in the list of allowed conditions, or is one of the conditions with "not_" in front, after you take into consideration
+    the above instructions on interpreting comparatives! If not, delete the rule.
 
     Return me ONLY the csv rows, no other text.
     """

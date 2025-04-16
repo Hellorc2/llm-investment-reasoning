@@ -61,6 +61,89 @@ def predict_success_of_founder(row_number, founder_info, iteration_index):
         except Exception as e:
             print(f"Warning: Could not clean up files for process {process_id}: {str(e)}")
 
+def predict_series(csv_file, iteration_index, threshold_success = 0.2, threshold_failure = 0.999):
+    """Process rows serially instead of in parallel"""
+    # Read the data using pandas
+    data = pd.read_csv(csv_file)
+    
+    # Clear prediction.csv before starting predictions
+    import shutil
+    try:
+        shutil.copyfile(f'prediction_{iteration_index}.csv', f'prediction_copy_{iteration_index}.csv')
+    except FileNotFoundError:
+        pass  # Ignore if original file doesn't exist yet
+    
+    with open(f'prediction_{iteration_index}.csv', 'w') as f:
+        f.write('row_number,success_prob,failure_prob,is_success\n')
+    
+    # Track rows that need reprocessing
+    rows_to_reprocess = []
+    
+    # Process rows serially
+    total_rows = len(data)
+    for idx, row in data.iterrows():
+        try:
+            result = predict_success_of_founder(idx, row, iteration_index)
+            
+            # Parse the result string
+            row_num, success_prob, failure_prob, is_success = result.strip().split(',')
+            success_prob = float(success_prob)
+            failure_prob = float(failure_prob)
+            
+            # If success_prob is 0 and failure_prob is 1, mark for reprocessing
+            if success_prob == 0.0 and failure_prob == 1.0:
+                rows_to_reprocess.append(int(row_num))
+            
+            # Write result immediately
+            with open(f'prediction_{iteration_index}.csv', 'a') as f:
+                f.write(result)
+            
+            print(f"Processed row {idx} out of {total_rows}")
+            
+        except Exception as e:
+            print(f"Error processing row {idx}: {str(e)}")
+            rows_to_reprocess.append(int(idx))
+    
+    # Reprocess failed rows if any
+    if rows_to_reprocess:
+        print(f"\nReprocessing {len(rows_to_reprocess)} rows with zero success probability...")
+        
+        # Process failed rows serially
+        reprocess_results = []
+        for idx in rows_to_reprocess:
+            try:
+                result = predict_success_of_founder(idx, data.iloc[idx], iteration_index)
+                reprocess_results.append(result)
+                print(f"Reprocessed row {idx}")
+            except Exception as e:
+                print(f"Error reprocessing row {idx}: {str(e)}")
+        
+        # Update the results in the CSV file
+        with open(f'prediction_{iteration_index}.csv', 'r') as f:
+            lines = f.readlines()
+        
+        # Create a mapping of row numbers to new results
+        result_map = {}
+        for result in reprocess_results:
+            row_num, _, _, _ = result.strip().split(',')
+            result_map[int(row_num)] = result
+        
+        # Update the lines with new results
+        for i, line in enumerate(lines):
+            if i == 0:  # Skip header
+                continue
+            row_num = int(line.split(',')[0])
+            if row_num in result_map:
+                lines[i] = result_map[row_num]
+        
+        # Write updated results back to file
+        with open(f'prediction_{iteration_index}.csv', 'w') as f:
+            f.writelines(lines)
+        
+        print(f"Reprocessing complete. Updated {len(rows_to_reprocess)} rows.")
+    
+    print("finished")
+
 
 
 def predict(csv_file, iteration_index, iterative = False):
@@ -85,6 +168,7 @@ def predict(csv_file, iteration_index, iterative = False):
     num_processes = min(cpu_count(), len(rows_to_process))  # Don't use more processes than rows
     print(f"Using {num_processes} processes")
     pool = Pool(processes=num_processes)
+    results = []
     
     try:
         # Process all rows in parallel
@@ -92,6 +176,7 @@ def predict(csv_file, iteration_index, iterative = False):
                              [(idx, row, iteration_index) 
                               for idx, row in rows_to_process])
         
+        """
         # Check results and track rows that need reprocessing
         rows_to_reprocess = []
         for result in results:
@@ -103,55 +188,66 @@ def predict(csv_file, iteration_index, iterative = False):
             # If success_prob is 0 and failure_prob is 1, mark for reprocessing
             if success_prob == 0.0 and failure_prob == 1.0:
                 rows_to_reprocess.append(int(row_num))
-        
-        # Reprocess failed rows if any
-        if rows_to_reprocess:
-            print(f"\nReprocessing {len(rows_to_reprocess)} rows with zero success probability...")
-            
-            # Process failed rows serially
-            reprocess_results = []
-            for idx in rows_to_reprocess:
-                result = predict_success_of_founder(idx, data.iloc[idx], iteration_index)
-                reprocess_results.append(result)
-                print(f"Reprocessed row {idx}")
-            
-            # Create a mapping of row numbers to new results
-            result_map = {}
-            for result in reprocess_results:
-                row_num, _, _, _ = result.strip().split(',')
-                result_map[int(row_num)] = result
-            
-            # Update the results with reprocessed values
-            for i, result in enumerate(results):
-                row_num = int(result.strip().split(',')[0])
-                if row_num in result_map:
-                    results[i] = result_map[row_num]
-        if not iterative:
-            # Write all results at once
-            print(f"\nWriting {len(results)} results to prediction_{iteration_index}.csv")
-            with open(f'predictions/prediction_{iteration_index}.csv', 'w') as f:
-                f.write('row_number,success_prob,failure_prob,is_success\n')
-                f.writelines(results)
-        else:
-            print(f"\nWriting {len(results)} results to prediction_iterative_{iteration_index}.csv")
-            with open(f'predictions_iterative/prediction_iterative_{iteration_index}.csv', 'w') as f:
-                f.write('row_number,success_prob,failure_prob,is_success\n')
-                f.writelines(results)
-
-        
-        # Verify the file was written correctly
-        try:
-            df = pd.read_csv(f'predictions/prediction_{iteration_index}.csv')
-            print(f"Verified file contains {len(df)} rows")
-        except Exception as e:
-            print(f"Error verifying file: {str(e)}")
-        
+        """
+                
     finally:
         # Always close the pool
         pool.close()
         pool.join()
     
+    # Reprocess failed rows if any
+    """
+    if rows_to_reprocess:
+        print(f"\nReprocessing {len(rows_to_reprocess)} rows with zero success probability...")
+        
+        # Process failed rows serially
+        reprocess_results = []
+        for idx in rows_to_reprocess:
+            result = predict_success_of_founder(idx, data.iloc[idx], iteration_index)
+            reprocess_results.append(result)
+            print(f"Reprocessed row {idx}")
+        
+        # Create a mapping of row numbers to new results
+        result_map = {}
+        for result in reprocess_results:
+            row_num, _, _, _ = result.strip().split(',')
+            result_map[int(row_num)] = result
+        
+        # Update the results with reprocessed values
+        for i, result in enumerate(results):
+            row_num = int(result.strip().split(',')[0])
+            if row_num in result_map:
+                results[i] = result_map[row_num]
+    """
+
+    # Write results after all processing is complete
+    output_file = f'predictions_iterative/prediction_iterative_{iteration_index}.csv' if iterative else f'predictions/prediction_{iteration_index}.csv'
+    print(f"\nWriting {len(results)} results to {output_file}")
+    with open(output_file, 'w') as f:
+        f.write('row_number,success_prob,failure_prob,is_success\n')
+        f.writelines(results)
+    
+    # Write to prediction log with timestamp
+    import datetime
+    import os
+    
+    # Create prediction_log directory if it doesn't exist
+    os.makedirs('prediction_log', exist_ok=True)
+    
+    # Get current timestamp
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    log_filename = f'prediction_log/{csv_file}_iter{iteration_index}_{iterative}_{timestamp}.csv'
+    
+    # Write to log file
+    print(f"\nWriting {len(results)} results to log file: {log_filename}")
+    with open(log_filename, 'w') as f:
+        f.write('row_number,success_prob,failure_prob,is_success\n')
+        f.writelines(results)
+    
     print("finished")
+
+
 
 def prediction_analysis(iteration_index, threshold_success = 0.3, threshold_failure = 1, iterative = False):
     if not iterative:
@@ -201,15 +297,17 @@ def prediction_analysis(iteration_index, threshold_success = 0.3, threshold_fail
     
     return precision, accuracy, recall, f_score, true_positives
 
-def get_best_models(iterations, success_thresholds = np.arange(0.05, 0.95, 0.05), failure_thresholds = np.append(np.arange(0.8, 1, 0.02),[0.999,0.9999]), iterative = False):
-        # Store results for plotting
+def get_best_models(iterations, success_thresholds = np.arange(0.01, 1, 0.01), 
+                    failure_thresholds = np.concatenate([np.arange(0.8, 1, 0.02), np.arange(0.99, 1, 0.001), 
+                                                         np.arange(0.999, 0.9999, 0.0001), np.arange(0.9999, 1, 0.00001), np.arange(0.99999, 1, 0.000001)]), 
+                    iterative = False, num_top_results = 3):
     results = []
     for iteration_index in iterations:
+        results_iteration = []
         for i in success_thresholds:
             for j in failure_thresholds:
                 precision,accuracy,recall, f_score, true_positives = prediction_analysis(iteration_index, i, j, iterative)
-                results.append({
-                    'iteration': iteration_index,
+                results_iteration.append({
                     'threshold_success': i,
                     'threshold_failure': j,
                     'precision': precision,
@@ -218,18 +316,18 @@ def get_best_models(iterations, success_thresholds = np.arange(0.05, 0.95, 0.05)
                     'f_score': f_score,
                     'true_positives': true_positives
                 })
-
-    # Convert results to DataFrame for easier plotting
-    results_df = pd.DataFrame(results)
+        results.append({iteration_index: results_iteration})
 
     best_models_str = ""
-        # For each iteration, save top 3 results to a file
-    for iteration in iterations:
+    # Convert results to DataFrame for easier plotting
+    for iteration_index in iterations:
+        results_iteration_df = pd.DataFrame(results[iteration_index])
+
         # Create the output string
-        output = f"Iteration {iteration} - Top 3 configurations:\n"
+        output = f"Iteration {iteration_index} - Top {num_top_results} configurations:\n"
         output += "-" * 50 + "\n"
         
-        top_3_results = results_df[results_df['iteration'] == iteration].sort_values('f_score', ascending=False).head(3)
+        top_3_results = results_iteration_df.sort_values('f_score', ascending=False).head(num_top_results)
         for i, result in enumerate(top_3_results.itertuples(), 1):
             output += f"#{i}:\n"
             output += f"F-score: {result.f_score:.3f}\n"
@@ -240,7 +338,7 @@ def get_best_models(iterations, success_thresholds = np.arange(0.05, 0.95, 0.05)
             output += "\n"
         
         # Save to file
-        filename = f"predictions_iterative/top_3_results_iteration_{iteration:03d}.txt"
+        filename = f"predictions_iterative/top_{num_top_results}_results_iteration_{iteration_index:03d}.txt"
         with open(filename, 'w') as f:
             f.write(output)
         
@@ -250,6 +348,29 @@ def get_best_models(iterations, success_thresholds = np.arange(0.05, 0.95, 0.05)
 
     return best_models_str
 
+
+def get_best_model_clusters(iterations, success_thresholds = np.arange(0.01, 1, 0.01), 
+                    failure_thresholds = np.concatenate([np.arange(0.8, 1, 0.02), np.arange(0.99, 1, 0.001), 
+                                                         np.arange(0.999, 0.9999, 0.0001), np.arange(0.9999, 1, 0.00001), np.arange(0.99999, 1, 0.000001)]), 
+                    iterative = False):
+    results = []
+    for iteration_index in iterations:
+        results_iteration = []
+        for i in success_thresholds:
+            for j in failure_thresholds:
+                precision,accuracy,recall, f_score, true_positives = prediction_analysis(iteration_index, i, j, iterative)
+                results_iteration.append({
+                    'threshold_success': i,
+                    'threshold_failure': j,
+                    'precision': precision,
+                    'accuracy': accuracy,
+                    'recall': recall,
+                        'f_score': f_score,
+                        'true_positives': true_positives
+                    })
+        results.append(results_iteration)
+
+
 def plot_precision_analysis(iterations, failure_thresholds = [0.999, 0.9999, 0.99999], iterative = False):
     import matplotlib.pyplot as plt
     # Store results for plotting
@@ -257,7 +378,7 @@ def plot_precision_analysis(iterations, failure_thresholds = [0.999, 0.9999, 0.9
     for iteration_index in iterations:
         for j in failure_thresholds:
             for i in np.arange(0.05, 0.95, 0.05):
-                precision,accuracy,recall, f_score, true_positives = prediction_analysis(iteration_index, i, j)
+                precision,accuracy,recall, f_score, true_positives = prediction_analysis(iteration_index, i, j, iterative)
                 results.append({
                     'iteration': iteration_index,
                     'threshold_success': i,
@@ -314,6 +435,3 @@ def plot_precision_analysis(iterations, failure_thresholds = [0.999, 0.9999, 0.9
                 print(f"{failure_threshold:<20} {success_threshold:<20.2f} {precision:<10.3f} {recall:<10.3f} {true_positives:<15d}")
         print("-" * 80)
     print("=" * 80)
-
-if __name__ == "__main__":
-    predict(csv_file = 'test_data_reduced.csv', iteration_index = 3, iterative = True)

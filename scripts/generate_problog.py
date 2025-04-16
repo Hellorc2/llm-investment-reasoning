@@ -149,7 +149,6 @@ def generate_problog_program(iteration_number, founder_info, program_file):
     }
 
 
-
     with open(program_file, 'w') as f:
         for attr in attributes:
             # Get the value from founder_info dataframe row

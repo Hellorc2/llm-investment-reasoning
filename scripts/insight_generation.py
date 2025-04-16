@@ -53,6 +53,7 @@ def analyze_founder(founder_profile: str, success: bool, model: str = "openai") 
 
 
 
+
 def save_result(timestamp: str, result: str) -> None:
     """
     Save the analysis result to a log file.

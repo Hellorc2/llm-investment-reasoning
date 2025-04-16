@@ -118,6 +118,120 @@ def arm_success(founders_data_sample,feature_combination, min_sample, random_sam
     
     return rule_str
     
+
+def arm_failure(founders_data_sample,feature_combination, min_sample, random_sample_size = 1):
+    # This function performs association rule mining to find patterns in the data that correlate with success.
+    # The main goals are to find frequent feature combinations that appear in successful founders and to generate association rules.
+    # This is useful for analyzing which combinations of characteristics are most strongly associated with founder success.
+
+
+    # Calculate random success probability
+    real_world_prob = 89.1
+    # Set the real-world probability of success (1.9%) to adjust the baseline calculation.
+    # This is used to normalize the probability of success in the sample to reflect real-world expectations.
+    random_failure_prob = (founders_data_sample['success'] == 0).mean() * 100
+
+    # Calculate the random probability of success based on the percentage of successful founders in the dataset.
+    # This serves as the baseline probability to compare against combinations found through association rule mining.
+    adjusted_random_prob = real_world_prob
+    print(f"Random probability of success (baseline): {random_failure_prob:.2f}%")
+
+
+    # Filter and encode relevant columns
+    categorical_data = founders_data_sample.select_dtypes(include=['int64', 'bool', 'object']).copy()
+    # Select only categorical columns for encoding and analysis. This ensures that numerical features are not mistakenly included.
+    
+
+    categorical_data_encoded = pd.get_dummies(categorical_data.drop(columns=['success']), columns=categorical_data.columns.drop('success')).astype(bool)
+    # Convert categorical columns into binary format using one-hot encoding.
+    # The success column is excluded because it's the target variable, not an input feature.
+
+    # Filter out positive indicators (e.g., *_0 or *_False) to focus on negative features only
+    negative_columns = [col for col in categorical_data_encoded.columns if col.endswith('_0') or col.endswith('_False') or col.endswith('_nope')]
+    # Filter out positive indicators (e.g., *_0, *_False, *_nope) to focus only on negative traits.
+    # This ensures that only attributes indicative of negative experiences or characteristics are analyzed.
+    categorical_data_encoded = categorical_data_encoded[negative_columns]
+
+
+    # Use Apriori to find frequent itemsets with higher minimum support to reduce load
+    frequent_itemsets = apriori(categorical_data_encoded, min_support=(min_sample / len(categorical_data_encoded)), use_colnames=True, verbose=1, max_len=feature_combination)
+    # Use the Apriori algorithm to identify frequent feature combinations that meet the minimum support threshold.
+    # The feature_combination parameter determines the maximum size of feature combinations (e.g., pairwise).
+    if frequent_itemsets.empty:
+        print("No frequent itemsets were generated. Please adjust the min_support value.")
+        return
+
+    # Filter itemsets to only include those with exactly the specified number of features
+    frequent_itemsets = frequent_itemsets[frequent_itemsets['itemsets'].apply(lambda x: len(x) == feature_combination)]
+    # Filter frequent itemsets to include only those with exactly the specified number of features.
+    # This ensures that the output matches the desired feature combination size (e.g., pairwise).
+
+    # Calculate success probability for each itemset
+    import math
+    failure_probabilities = []
+    likelihood_of_failure = []
+    sample_counts = []
+    standard_deviations = []
+    confidence_intervals = []
+    for _, row in frequent_itemsets.iterrows():
+        itemset = row['itemsets']
+        # Filter the original sample to include rows that have all items in the itemset
+        mask = pd.Series(True, index=founders_data_sample.index)
+        # Create a boolean mask to filter the dataset for rows that match all features in the itemset.
+        for item in itemset:
+            if item in categorical_data_encoded.columns:
+                mask &= categorical_data_encoded[item]
+                filtered_data = founders_data_sample[mask]
+        # Calculate success probability for the filtered data
+        failure_count = (filtered_data['success'] == 0).sum()  # Count failures (success = 0)
+        failure_probability = (failure_count / len(filtered_data)) * 100 if len(filtered_data) > 0 else 0
+        # Calculate the success probability for the filtered data subset.
+        # This measures the percentage of founders with the itemset features that were successful.
+        likelihood = (failure_probability / random_failure_prob) if random_failure_prob > 0 else 0
+        likelihood_of_failure.append(likelihood)
+        sample_counts.append(len(filtered_data))
+        # Calculate standard deviation based on binomial distribution
+        p = failure_probability / 100
+        n = len(filtered_data)
+        standard_deviation = math.sqrt(p * (1 - p) / n) * 100 if n > 0 else 0
+        # Calculate 95% confidence interval
+        Z = 1.96  # Z-score for 95% confidence level
+        margin_of_error = Z * standard_deviation
+        confidence_lower = max(0, failure_probability - margin_of_error)
+        confidence_upper = min(100, failure_probability + margin_of_error)
+        confidence_intervals.append((confidence_lower, confidence_upper))
+        failure_probabilities.append(failure_probability)
+        standard_deviations.append(standard_deviation)
+
+    frequent_itemsets['failure_probability'] = failure_probabilities
+    frequent_itemsets['sample_count'] = sample_counts
+    frequent_itemsets['likelihood_of_failure'] = likelihood_of_failure
+    frequent_itemsets['real_world_prob'] = frequent_itemsets['failure_probability'] * (real_world_prob / random_failure_prob)
+    frequent_itemsets['confidence_interval_95'] = [(round(conf[0] * (real_world_prob / random_failure_prob), 2), round(conf[1] * (real_world_prob / random_failure_prob), 2)) for conf in confidence_intervals]
+    # Add calculated columns to the frequent itemsets DataFrame, including:
+    # - success_probability: Percentage of success for founders with the itemset features.
+    # - sample_count: Number of samples matching the itemset.
+    # - likelihood_of_success: Comparison of success probability to the random baseline.
+    # - real_world_prob: Normalized success probability to reflect real-world distribution.
+    # - confidence_interval_95: 95% confidence interval for success probability.
+
+    # Display the number of frequent itemsets identified
+    print(f"Number of frequent itemsets identified: {len(frequent_itemsets)}")
+
+    # Display the top 10 frequent itemsets based on success probability
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.float_format', '{:.2f}'.format)
+    pd.set_option('display.max_colwidth', None)
+    print(f"Top Frequent Itemsets by Failure Probability (including sample count, likelihood of failure, and 95% confidence interval):")
+    if not frequent_itemsets.empty:
+        top_itemsets = frequent_itemsets[['itemsets', 'failure_probability', 'sample_count', 'likelihood_of_failure', 'real_world_prob', 'confidence_interval_95']].sort_values(by='failure_probability', ascending=False).head(5)
+        filtered_top_itemsets = top_itemsets[top_itemsets['sample_count'] >= 10]
+        print(top_itemsets)
+        random_selection = filtered_top_itemsets.sample(n=random_sample_size)
+        rule_str = random_selection[['itemsets','failure_probability']]
+        print(rule_str)
+    
+    return rule_str
     
 
     """
@@ -499,5 +613,10 @@ def calculate_failure_probability(feature_combination, founders_data_sample):
 
     print(f"feature combination: {feature_combination} ,    Number of founders who failed: {len(failed_filtered_data)} out of {len(filtered_data)}")
     return failure_probability, len(filtered_data)
+
+
+founders_data_sample = pd.read_csv('founder_data_ml.csv').sample(1000, random_state=42)
+arm_success(founders_data_sample, 2, 10)
+arm_failure(founders_data_sample, 2, 10)
 
 
