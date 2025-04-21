@@ -134,8 +134,8 @@ def generate_problog_program(iteration_number, founder_info, program_file):
         "big_leadership": [0, 3],
         "nasdaq_leadership": [0, 3],
         "number_of_leadership_roles": [0, 2],
-        "number_of_roles": [0, 20],
-        "number_of_companies": [0, 10],
+        "number_of_roles": [0, 4],
+        "number_of_companies": [0, 4],
         "industry_achievements": [0, 1],
         "press_media_coverage_count": [0, 2],
         "vc_experience": [0, 2],
@@ -164,7 +164,7 @@ def generate_problog_program(iteration_number, founder_info, program_file):
                 elif value <= attribute_limits[attr][0]:
                     prob = 0
                 else:
-                    prob = (value - attribute_limits[attr][0])/(attribute_limits[attr][1] - attribute_limits[attr][0])
+                    prob = round(((value - attribute_limits[attr][0])/(attribute_limits[attr][1] - attribute_limits[attr][0]))**2, 3)
             else:
                 prob = 1
             

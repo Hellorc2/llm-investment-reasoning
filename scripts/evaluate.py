@@ -1,5 +1,5 @@
 import pandas as pd
-from predict import predict, prediction_analysis
+from predict import predict
 
 def llm_evaluate(iterative_index):
     from llms.deepseek import get_llm_response, get_llm_response_with_history
@@ -80,7 +80,7 @@ def llm_evaluate(iterative_index):
 
 def evaluate(iterative_index):
     import numpy as np
-    from predict import get_best_models
+    from prediction_analysis import get_best_models
     previous_policies = []
     previous_policies_with_metrics = []
 
@@ -98,7 +98,7 @@ def evaluate(iterative_index):
                 Policy:
                 {previous_policies[i-5*(iterative_index // 5)]}"""
             
-            best_models_description = get_best_models([i], iterative = True)
+            best_models_description, best_success_thresholds, best_failure_thresholds = get_best_models([i], iterative = True)
 
             policy_with_metrics_str += f"""
             Best Models Description:

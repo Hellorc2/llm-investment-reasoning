@@ -9,6 +9,10 @@ from predict import *
 from evaluate import evaluate
 from llm_reasoning import logical_statements_preprocess, modify_analysis_based_on_advice
 
+# Set display options to show full content
+pd.set_option('display.max_colwidth', None)
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
 
 def analyze_single_founder(args):
     index, row, model = args
@@ -98,7 +102,7 @@ def generate_insights(model="deepseek", iterative = False, iterative_index = 0):
 
 
 def insight_analysis(iterative = False, iterative_index = 0):
-    from scripts.llm_reasoning import analyze_insights, analyze_insights_in_groups, logical_statements_preprocess
+    from scripts.llm_reasoning import analyze_insights_in_groups, logical_statements_preprocess
     if iterative:
         analysis_results = analyze_insights_in_groups(f'results/founder_insights_final_{iterative_index:03d}.csv', model="deepseek")
     else:
@@ -113,7 +117,7 @@ def iterative_training(starting_from = 0, end_at = 9, model="deepseek"):
 
 def iterative_training_step(iterative_index=0, model="deepseek"):
 
-    founders_data_sample = pd.read_csv('training_data_ml.csv').sample(n=1000)
+    founders_data_sample = pd.read_csv('training_data_ml.csv').sample(n=1000, random_state=iterative_index)
 
     # Save the sampled data for this iteration
     output_path = f'training_data_sample_ml.csv'
@@ -172,6 +176,8 @@ def raw_probability_from_logical_statements(founders_data_sample, iterative_inde
                     else:
                         result = f"Failure rule: {parts[1:-1]}, probability: {failure_probability/100:.2f}"
                     output_file.write(result + '\n')
+        output_file.write(f"Success rule hints: {success_rule_hints}\n")
+        output_file.write(f"Failure rule hints: {failure_rule_hints}\n")
     return success_rule_hints, failure_rule_hints
 
 
@@ -195,11 +201,6 @@ def reflect_logical_statement(model="deepseek", success_rule_hints = "", failure
     Now I will show you the same rules with the probabilities calculated from the data:
 
     {calibrated_statements}
-
-    Please reflect on your intuition by comparing the probabilities calculated from the data with the probabilities you assigned to the rules. 
-    If the probabilities are not consistent, try to understand why and adjust your intuition. If the probability says "not enough samples", that means
-    that the rule is satisfied very rarely, so you might have to think about whether your original logic came from an outliner. Your end goal 
-    is to produce a modified version of the original rules that are more accurate. 
     
     Also, you are optionally given one or few high-probability success rules discovered from the data:
 
@@ -212,9 +213,16 @@ def reflect_logical_statement(model="deepseek", success_rule_hints = "", failure
     consider incorporating them into your rules, but make sure it fits the whole policy. Also, you MUST make sure to take these features in the right format -
     if a feature ends with _0 or _False, remove this part from the feature and add a not_ at the beginning of the feature. If a feature ends with
     _positive_number or _True, just remove this part.
+
+    Please reflect on your intuition by comparing the probabilities calculated from the data with the probabilities you assigned to the rules. 
+    If the probabilities are not consistent, try to understand why and adjust your intuition. If the probability says "not enough samples", that means
+    that the rule is satisfied very rarely, so you might have to think about whether your original logic came from an outliner. If the success probability 
+    was too low (random success probability in the dataset was 0.1, so anything less than 0.11 is low) or the failure probability was too low (random 
+    failure probability was 0.9), consider removing them. Your end goal 
+    is to produce a modified version of the original rules that are more accurate. 
     
-    Return me the modified rules in the same format as the original rules.
-    Note that you are free to delete or modify the original rules, but not allowed to add new rules."""
+    Note that you are free to delete or modify the original rules, but not allowed to add new rules. Return me the modified rules in the same format as the original rules,
+     and double check you have made all the deletions you wished to make. """
 
     # Get LLM response
     if model == "openai":
@@ -276,7 +284,7 @@ def generate_new_insights(iterative_index):
 
     analysis_result = analyze_insights_in_groups(f'results/founder_insights_final_{iterative_index:03d}.csv', model="deepseek", iterative=True, previous_analysis = previous_analysis)
     print(analysis_result)
-    
-if __name__ == "__main__":
-    generate_insights(iterative_index = 18, iterative = True)
 
+
+if __name__ == "__main__":
+    iterative_training(starting_from = 0, end_at = 9, model="deepseek")
