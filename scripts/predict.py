@@ -249,5 +249,5 @@ def predict(csv_file, iteration_index, iterative = False):
 
 
 if __name__ == "__main__":
-    for i in range(0,9):
+    for i in range(0,10):
         predict(csv_file = 'test_data_validation.csv', iteration_index = i, iterative = False)

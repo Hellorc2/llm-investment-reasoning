@@ -3,11 +3,11 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 import numpy as np
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from datetime import datetime
-from predict import *
 from evaluate import evaluate
-from llm_reasoning import logical_statements_preprocess, modify_analysis_based_on_advice
+from llm_reasoning import logical_statements_preprocess
+from data_utils import *
 
 # Set display options to show full content
 pd.set_option('display.max_colwidth', None)
@@ -110,12 +110,12 @@ def insight_analysis(iterative = False, iterative_index = 0):
     logical_statements_preprocess(model="deepseek")
     print(analysis_results)
 
-def iterative_training(starting_from = 0, end_at = 9, model="deepseek"):
+def iterative_training(starting_from = 0, end_at = 9, model="deepseek", exclude_features_success = [], exclude_features_failure = []):
     for i in range(starting_from, end_at+1):
-        iterative_training_step(iterative_index=i)
+        exclude_features_success, exclude_features_failure = iterative_training_step(iterative_index=i, model=model, exclude_features_success = exclude_features_success, exclude_features_failure = exclude_features_failure)
         print(f"Iteration {i} complete")
 
-def iterative_training_step(iterative_index=0, model="deepseek"):
+def iterative_training_step(iterative_index=0, model="deepseek", exclude_features_success = [], exclude_features_failure = []):
 
     founders_data_sample = pd.read_csv('training_data_ml.csv').sample(n=1000, random_state=iterative_index)
 
@@ -128,6 +128,7 @@ def iterative_training_step(iterative_index=0, model="deepseek"):
         #generate_insights(iterative=True, iterative_index=0)
         insight_analysis(iterative=True, iterative_index=0)
         save_iterative_results_1(iterative_index)
+    
     elif iterative_index % 5 == 4:
         generate_new_insights(iterative_index = iterative_index)
         logical_statements_preprocess(model="deepseek")
@@ -141,16 +142,20 @@ def iterative_training_step(iterative_index=0, model="deepseek"):
         save_iterative_results_1(iterative_index)
     
 
-    success_rule_hints, failure_rule_hints = raw_probability_from_logical_statements(founders_data_sample, iterative_index = iterative_index)
+    success_rule_hints, failure_rule_hints, exclude_features_success, exclude_features_failure = raw_probability_from_logical_statements(founders_data_sample, iterative_index = iterative_index, 
+                                                                                                                                         exclude_features_success = exclude_features_success, exclude_features_failure = exclude_features_failure)
     reflect_logical_statement(iterative_index = iterative_index, success_rule_hints = success_rule_hints, failure_rule_hints = failure_rule_hints)
     save_iterative_results_2(iterative_index)
+    return exclude_features_success, exclude_features_failure
 
 
-def raw_probability_from_logical_statements(founders_data_sample, iterative_index = 0):
+def raw_probability_from_logical_statements(founders_data_sample, iterative_index = 0, exclude_features_success = [], exclude_features_failure = []):
     from arm import calculate_success_probability, calculate_failure_probability, arm_success, arm_failure
-    
-    success_rule_hints = arm_success(founders_data_sample, feature_combination = 2, min_sample = 10, random_sample_size = 2)
-    failure_rule_hints = arm_failure(founders_data_sample, feature_combination = 2, min_sample = 90, random_sample_size = 1)
+    if iterative_index == 5:
+        exclude_features_success = []
+        exclude_features_failure = []
+    success_rule_hints, exclude_features_success = arm_success(founders_data_sample, feature_combination = 2, min_sample = 10, random_sample_size = 2, exclude_features = exclude_features_success, exclude_features_threshold = 4)
+    failure_rule_hints, exclude_features_failure = arm_failure(founders_data_sample, feature_combination = 2, min_sample = 90, random_sample_size = 1, exclude_features = exclude_features_failure, exclude_features_threshold = 4)
     print(success_rule_hints)
     print(failure_rule_hints)
     with open(f'logical_statements/logical_statements_preprocessed.txt', 'r') as input_file, \
@@ -178,7 +183,7 @@ def raw_probability_from_logical_statements(founders_data_sample, iterative_inde
                     output_file.write(result + '\n')
         output_file.write(f"Success rule hints: {success_rule_hints}\n")
         output_file.write(f"Failure rule hints: {failure_rule_hints}\n")
-    return success_rule_hints, failure_rule_hints
+    return success_rule_hints, failure_rule_hints, exclude_features_success, exclude_features_failure
 
 
 def reflect_logical_statement(model="deepseek", success_rule_hints = "", failure_rule_hints = "", iterative_index = 0):
@@ -230,7 +235,7 @@ def reflect_logical_statement(model="deepseek", success_rule_hints = "", failure
     else:
         from llms.deepseek import get_llm_response
         
-    analysis = get_llm_response(system_prompt, user_prompt)
+    analysis = get_llm_response(system_prompt, user_prompt, model = "deepseek-reasoner")
     print("\nLLM Analysis of Probability Patterns:")
     print("------------------------------------")
     print(analysis)
@@ -286,5 +291,48 @@ def generate_new_insights(iterative_index):
     print(analysis_result)
 
 
-if __name__ == "__main__":
-    iterative_training(starting_from = 0, end_at = 9, model="deepseek")
+def run_cross_validation_nth_fold(nth_fold):
+    # Read the nth fold data
+    train_data = pd.read_csv(f'cross_validation_data/fold_{nth_fold}/train_data.csv')
+    val_data = pd.read_csv(f'cross_validation_data/fold_{nth_fold}/validation_data.csv')
+    test_data = pd.read_csv(f'cross_validation_data/fold_{nth_fold}/test_data.csv')
+
+    iterative_training(starting_from = 0, end_at = 9, model="deepseek", exclude_features_success = [], exclude_features_failure = [])
+
+    # Predict validation data
+    from predict import predict
+    from prediction_analysis import get_best_models, get_best_model_clusters, prediction_analysis
+    for i in range(10):
+        predict(f'cross_validation_data/fold_{nth_fold}/validation_data.csv', iterative=False, iterative_index=i)
+    
+    best_models, best_success_thresholds, best_failure_thresholds = get_best_models([0,1,2,3,4,5,6,7,8,9], num_top_results = 1, f_score_parameter = 0.25)
+    best_model_clusters, best_cluster_success_thresholds, best_cluster_failure_thresholds = get_best_model_clusters([0,1,2,3,4,5,6,7,8,9], num_top_results = 1, f_score_parameter = 0.25)
+
+    # Predict test data
+    for i in range(10):
+        predict(f'cross_validation_data/fold_{nth_fold}/test_data.csv', iterative=True, iterative_index=i)
+        precision, accuracy, recall, f_score_half, f_score_quarter, true_positives = prediction_analysis(i, best_success_thresholds[i], best_failure_thresholds[i], iterative=False)
+        precision_cluster, accuracy_cluster, recall_cluster, f_score_half_cluster, f_score_quarter_cluster, true_positives_cluster = prediction_analysis(i, best_cluster_success_thresholds[i], best_cluster_failure_thresholds[i], iterative=False)
+
+
+
+"""
+founder_df = pd.read_csv('founder_data.csv')
+
+filtered_rows = get_n_filtered_rows(700, ["professional_athlete", "childhood_entrepreneurship", "competitions", "ten_thousand_hours_of_mastery",
+        "languages", "perseverance", "risk_tolerance", "vision", "adaptability", "personal_branding",
+        "education_level", "education_institution", "education_field_of_study", "education_international_experience",
+        "education_extracurricular_involvement", "education_awards_and_honors", "big_leadership", "nasdaq_leadership",
+        "number_of_leadership_roles", "being_lead_of_nonprofits", "number_of_roles", "number_of_companies", "industry_achievements",
+        "big_company_experience", "nasdaq_company_experience", "big_tech_experience", "google_experience", "facebook_meta_experience",
+        "microsoft_experience", "amazon_experience", "apple_experience", "career_growth", "moving_around",
+        "international_work_experience", "worked_at_military", "big_tech_position", "worked_at_consultancy", "worked_at_bank",
+        "press_media_coverage_count", "vc_experience", "angel_experience", "quant_experience",
+        "board_advisor_roles", "tier_1_vc_experience", "startup_experience", "ceo_experience", "investor_quality_prior_startup",
+        "previous_startup_funding_experience", "ipo_experience", "num_acquisitions", "domain_expertise", "skill_relevance",'success'], 'iterative_train_data/train_batch_021.csv')
+filtered_rows.to_csv('train_batch_021_ml.csv', index=False)
+"""
+
+founder_df = pd.read_csv('founder_data.csv')
+print(founder_df.head())
+

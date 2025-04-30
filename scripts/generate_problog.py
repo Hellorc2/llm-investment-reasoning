@@ -58,7 +58,8 @@ def read_polished_rules(iteration_number):
                 rules.append((is_success, feature_str, probability))
     return rules
 
-def generate_base_problog_program(iteration_number):
+    
+def generate_base_problog_program(iteration_number, with_scaling = False):
     attributes = [
         "professional_athlete", "childhood_entrepreneurship", "competitions", "ten_thousand_hours_of_mastery",
         "languages", "perseverance", "risk_tolerance", "vision", "adaptability", "personal_branding",
@@ -91,7 +92,12 @@ def generate_base_problog_program(iteration_number):
             conditions = conditions.replace('not_', '\+')
             
             if probability == "not enough samples":
-                probability = "0.5" # Default probability for unknown cases
+                probability = "0" if is_success else "1" # Default probability for unknown cases
+            elif with_scaling:
+                if is_success:
+                    probability = round(3*(float(probability))**2, 2) if float(probability)<0.5 else round(0.3*float(probability)+0.7, 2)
+                else:
+                    probability = round(1- (((1-float(probability))**2)/0.02), 2) if float(probability)>0.9 else round(5/9 * float(probability), 2)
                 
             problog_line = f"{probability}::{pred} :- {conditions}.\n"
             f.write(problog_line)

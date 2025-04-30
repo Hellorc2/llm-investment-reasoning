@@ -98,11 +98,13 @@ def evaluate(iterative_index):
                 Policy:
                 {previous_policies[i-5*(iterative_index // 5)]}"""
             
-            best_models_description, best_success_thresholds, best_failure_thresholds = get_best_models([i], iterative = True)
+            best_models_description_half, best_success_thresholds_half, best_failure_thresholds_half = get_best_models([i], iterative = True, f_score_parameter = 0.5)
+            best_models_description_quarter, best_success_thresholds_quarter, best_failure_thresholds_quarter = get_best_models([i], iterative = True, f_score_parameter = 0.25)
 
             policy_with_metrics_str += f"""
             Best Models Description:
-            {best_models_description}
+            {best_models_description_half}
+            {best_models_description_quarter}
             """
 
             previous_policies_with_metrics.append(policy_with_metrics_str)
@@ -127,13 +129,12 @@ def evaluate(iterative_index):
 
     Consider the evolution of the policies over the iterations: is it improving or getting worse?     Analyse the differences in each policy carefully
       and return me the analysis: which features may have contributed to the better/worseperformance?Treat precision as the primary metric, 
-    and recall as the secondary metric. The F-scores given are the F_0.5 scores, which give more weight to precision. If you are familiar with the 
+    and recall as the secondary metric. The F-scores given are the F_0.5 and the F_0.25 scores, which give more weight to precision. If you are familiar with the 
     idea of gradient descent, you can think of trying to figure out which direction to move the policy in to improve its performance.
     
     Now suggest a list of modifications to these policies that you think would improve their performance, with the above questions 
-    in mind. In particular, if the policies are on a declining path, find a way to move them back on track; if one particular policy performed well,
-     try to focus on its differences from the previous policies. If you have deleted some rules that you think are unhelpful, find 
-    inspiration in the previous policies. DO NOT come up with new rules yourself. Keep the same number of success rules and the same number of failure rules.
+    in mind. Keep the same number of success rules and the same number of failure rules, that is around 12 success rules and 6 failure rules. In particular, if the policies are on a declining path, find a way to move them back on track; if one particular policy performed well,
+     try to focus on its differences from the previous policies. 
 
     Based on your previous analysis, you are advised to:
     1. avoid judging the founder traits themselves without context - try to use less of your intuition and base your analysis more on how each rule might have affected
@@ -141,7 +142,7 @@ def evaluate(iterative_index):
     2. avoid focusing on the success and failure thresholds - these don't infer useful information about the policy.
     """
 
-    advice = get_llm_response(system_prompt, user_prompt)
+    advice = get_llm_response(system_prompt, user_prompt, model = "deepseek-reasoner")
     print(advice)
 
     # Save original preprocessed statements before any modifications

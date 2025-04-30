@@ -119,7 +119,7 @@ def predict_success(founder_data):
     system_prompt = """You are an expert in venture capital tasked with identifying successful founders from their unsuccessful counterparts. 
     All founders under consideration are sourced from LinkedIn profiles of companies that have raised between $100K and $4M in funding. 
     A successful founder is defined as one whose company has achieved either an exit or IPO valued at over $500M."""
-    user_prompt = f"Given the following founder {founder_info} please output only 'Yes' or 'No' corresponding to whether or not the founder will be successful."
+    user_prompt = f"Given the following founder {founder_info} please output only 'Yes' or 'No' corresponding to whether or not the founder will be successful. DO NOT attempt to search up any of the specific companies or people or links from the internet!"
 
     from llms.deepseek import get_llm_response
     prediction = get_llm_response(system_prompt, user_prompt)
@@ -130,7 +130,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
 tqdm.pandas(desc="Processing founders")
-combined_df = pd.read_csv('test_data_reduced.csv')
+combined_df = pd.read_csv('test_data_validation.csv')
 
 def predict_success_wrapper(row):
     return predict_success(row)
@@ -165,7 +165,7 @@ print("\nConfusion Matrix:")
 print(confusion_matrix)
 
 # Save results to a CSV file
-combined_df[['success', 'gpt4_prediction']].to_csv('deepseek_predictions_test_data_reduced.csv', index=False)
+combined_df[['success', 'gpt4_prediction']].to_csv('deepseek_predictions_test_data_validation.csv', index=False)
 
 
 

@@ -165,12 +165,12 @@ def update_exclude_features(rule_str, top_10_itemsets, exclude_features, exclude
         print(f"{feature}: {count} times")
         
     for feature, count in feature_counts.items():
-        if count > exclude_features_threshold:
+        if count >= exclude_features_threshold:
             # Process feature name to remove everything from and including the last underscore
             base_feature = feature.rsplit('_', 1)[0]
             if base_feature not in exclude_features:
                 exclude_features.append(base_feature)
-                print(f"Adding {base_feature} to exclude_features (count: {count} > threshold: {exclude_features_threshold})")
+                print(f"Adding {base_feature} to exclude_features (count: {count} >= threshold: {exclude_features_threshold})")
     
     return exclude_features
 

@@ -54,7 +54,7 @@ def prediction_analysis(iteration_index, threshold_success = 0.3, threshold_fail
 def get_best_models(iterations, success_thresholds = np.arange(0.01, 1, 0.01), 
                     failure_thresholds = np.concatenate([np.arange(0.8, 1, 0.02), np.arange(0.99, 1, 0.001), 
                                                          np.arange(0.999, 0.9999, 0.0001), np.arange(0.9999, 1, 0.00001), np.arange(0.99999, 1, 0.000001)]), 
-                    iterative = False, num_top_results = 3, f_score_parameter = 0.5):
+                    iterative = False, num_top_results = 1, f_score_parameter = 0.5):
     results = {}
     best_success_thresholds = {}
     best_failure_thresholds = {}
@@ -189,7 +189,7 @@ def plot_precision_analysis(iterations, failure_thresholds = [0.999, 0.9999, 0.9
 def get_best_model_clusters(iterations, success_thresholds = np.arange(0.01, 1, 0.01),
                       failure_thresholds = np.concatenate([np.arange(0.8, 1, 0.02), np.arange(0.99, 1, 0.001), 
                                                          np.arange(0.999, 0.9999, 0.0001), np.arange(0.9999, 1, 0.00001), np.arange(0.99999, 1, 0.000001)]), 
-                      iterative = False, num_top_results = 3, f_score_parameter = 0.5):
+                      iterative = False, num_top_results = 1, f_score_parameter = 0.5):
     results = {}
     best_success_thresholds = {}
     best_failure_thresholds = {}
@@ -344,5 +344,4 @@ def get_group_analysis(iterations, success_thresholds, failure_thresholds, major
 
 
 if __name__ == "__main__":
-    best_models_str, best_success_thresholds, best_failure_thresholds = get_best_models(iterations = [0,1,2,3,4,5,6,7,8,9,10], num_top_results = 1, f_score_parameter = 0.25)
-    print(get_group_analysis(iterations = [0,1,2,3,4,5,6,7,8,9,10], success_thresholds = best_success_thresholds, failure_thresholds = best_failure_thresholds, majority_threshold = 8, iterative = False))
+    best_models_str, best_success_thresholds, best_failure_thresholds = get_best_models(iterations = [0,1,2,3,4,5,6,7,8,9], num_top_results = 1, f_score_parameter = 0.25)
