@@ -8,6 +8,8 @@ from datetime import datetime
 from evaluate import evaluate
 from llm_reasoning import logical_statements_preprocess
 from data_utils import *
+import shutil
+import time  # Add time module for sleep function
 
 # Set display options to show full content
 pd.set_option('display.max_colwidth', None)
@@ -129,7 +131,7 @@ def iterative_training_step(iterative_index=0, model="deepseek", exclude_feature
         insight_analysis(iterative=True, iterative_index=0)
         save_iterative_results_1(iterative_index)
     
-    elif iterative_index % 5 == 4:
+    elif iterative_index % 5 == 0:
         generate_new_insights(iterative_index = iterative_index)
         logical_statements_preprocess(model="deepseek")
         save_iterative_results_1(iterative_index)
@@ -151,7 +153,7 @@ def iterative_training_step(iterative_index=0, model="deepseek", exclude_feature
 
 def raw_probability_from_logical_statements(founders_data_sample, iterative_index = 0, exclude_features_success = [], exclude_features_failure = []):
     from arm import calculate_success_probability, calculate_failure_probability, arm_success, arm_failure
-    if iterative_index == 5:
+    if iterative_index == 7:
         exclude_features_success = []
         exclude_features_failure = []
     success_rule_hints, exclude_features_success = arm_success(founders_data_sample, feature_combination = 2, min_sample = 10, random_sample_size = 2, exclude_features = exclude_features_success, exclude_features_threshold = 4)
@@ -235,7 +237,7 @@ def reflect_logical_statement(model="deepseek", success_rule_hints = "", failure
     else:
         from llms.deepseek import get_llm_response
         
-    analysis = get_llm_response(system_prompt, user_prompt, model = "deepseek-reasoner")
+    analysis = get_llm_response(system_prompt, user_prompt, model = "deepseek-chat")
     print("\nLLM Analysis of Probability Patterns:")
     print("------------------------------------")
     print(analysis)
@@ -290,36 +292,26 @@ def generate_new_insights(iterative_index):
     analysis_result = analyze_insights_in_groups(f'results/founder_insights_final_{iterative_index:03d}.csv', model="deepseek", iterative=True, previous_analysis = previous_analysis)
     print(analysis_result)
 
+def run_cross_validation():
+    for i in range(0,12):
+        run_cross_validation_nth_fold(i)
+        print(f"==========Fold {i} complete==========")
+        time.sleep(600)
 
-def run_cross_validation_nth_fold(nth_fold):
+def prepare_cross_validation_data():
+    for i in range(0,12):
+        prepare_cross_validation_nth_fold(i)
+
+
+def prepare_cross_validation_nth_fold(nth_fold):
+
     # Read the nth fold data
     train_data = pd.read_csv(f'cross_validation_data/fold_{nth_fold}/train_data.csv')
     val_data = pd.read_csv(f'cross_validation_data/fold_{nth_fold}/validation_data.csv')
     test_data = pd.read_csv(f'cross_validation_data/fold_{nth_fold}/test_data.csv')
 
-    iterative_training(starting_from = 0, end_at = 9, model="deepseek", exclude_features_success = [], exclude_features_failure = [])
-
-    # Predict validation data
-    from predict import predict
-    from prediction_analysis import get_best_models, get_best_model_clusters, prediction_analysis
-    for i in range(10):
-        predict(f'cross_validation_data/fold_{nth_fold}/validation_data.csv', iterative=False, iterative_index=i)
-    
-    best_models, best_success_thresholds, best_failure_thresholds = get_best_models([0,1,2,3,4,5,6,7,8,9], num_top_results = 1, f_score_parameter = 0.25)
-    best_model_clusters, best_cluster_success_thresholds, best_cluster_failure_thresholds = get_best_model_clusters([0,1,2,3,4,5,6,7,8,9], num_top_results = 1, f_score_parameter = 0.25)
-
-    # Predict test data
-    for i in range(10):
-        predict(f'cross_validation_data/fold_{nth_fold}/test_data.csv', iterative=True, iterative_index=i)
-        precision, accuracy, recall, f_score_half, f_score_quarter, true_positives = prediction_analysis(i, best_success_thresholds[i], best_failure_thresholds[i], iterative=False)
-        precision_cluster, accuracy_cluster, recall_cluster, f_score_half_cluster, f_score_quarter_cluster, true_positives_cluster = prediction_analysis(i, best_cluster_success_thresholds[i], best_cluster_failure_thresholds[i], iterative=False)
-
-
-
-"""
-founder_df = pd.read_csv('founder_data.csv')
-
-filtered_rows = get_n_filtered_rows(700, ["professional_athlete", "childhood_entrepreneurship", "competitions", "ten_thousand_hours_of_mastery",
+    attributes_ml = [
+        "professional_athlete", "childhood_entrepreneurship", "competitions", "ten_thousand_hours_of_mastery",
         "languages", "perseverance", "risk_tolerance", "vision", "adaptability", "personal_branding",
         "education_level", "education_institution", "education_field_of_study", "education_international_experience",
         "education_extracurricular_involvement", "education_awards_and_honors", "big_leadership", "nasdaq_leadership",
@@ -329,10 +321,166 @@ filtered_rows = get_n_filtered_rows(700, ["professional_athlete", "childhood_ent
         "international_work_experience", "worked_at_military", "big_tech_position", "worked_at_consultancy", "worked_at_bank",
         "press_media_coverage_count", "vc_experience", "angel_experience", "quant_experience",
         "board_advisor_roles", "tier_1_vc_experience", "startup_experience", "ceo_experience", "investor_quality_prior_startup",
-        "previous_startup_funding_experience", "ipo_experience", "num_acquisitions", "domain_expertise", "skill_relevance",'success'], 'iterative_train_data/train_batch_021.csv')
-filtered_rows.to_csv('train_batch_021_ml.csv', index=False)
-"""
+        "previous_startup_funding_experience", "ipo_experience", "num_acquisitions", "domain_expertise", "skill_relevance", 'success'
+    ]
 
-founder_df = pd.read_csv('founder_data.csv')
-print(founder_df.head())
+    training_data_ml = get_n_filtered_rows(4000, attributes_ml, f'cross_validation_data/fold_{nth_fold}/train_data.csv')
+    training_data_ml.to_csv(f'cross_validation_data/fold_{nth_fold}/training_data_ml.csv', index=False)
+
+    # Take random 1100 rows from training data as iterative training data
+    get_n_random_rows_and_split(110, 990, [],f'cross_validation_data/fold_{nth_fold}/train_data.csv', 
+                                                          f'cross_validation_data/fold_{nth_fold}/iterative_training_data.csv',
+                                                          f'cross_validation_data/fold_{nth_fold}/training_data_remaining.csv')
+    split_training_data(successful_rows = 10, unsuccessful_rows = 90, train_data_csv = f'cross_validation_data/fold_{nth_fold}/iterative_training_data.csv', data_dir = f'cross_validation_data/fold_{nth_fold}/iterative_training_data')
+
+    # Create results directory if it doesn't exist
+    results_dir = os.path.join('cross_validation_data', f'fold_{nth_fold}', 'results')
+    os.makedirs(results_dir, exist_ok=True)
+
+    for i in range(0,11):
+        train_batch_file = f'cross_validation_data/fold_{nth_fold}/iterative_training_data/train_batch_{i:03d}.csv'
+        # Read the train batch file
+        df = pd.read_csv(train_batch_file)
+        
+        # Create a new DataFrame with the required columns
+        new_df = pd.DataFrame({
+            'founder': df['founder_name'],
+            'insight': df['insight'],
+            'success': df['success']
+        })
+        # Save to a new CSV file
+        output_file = f'cross_validation_data/fold_{nth_fold}/results/founder_insights_final_{i:03d}.csv'
+
+        
+        new_df.to_csv(output_file, index=False)
+
+    get_n_random_rows_and_split(50, 450, [],f'cross_validation_data/fold_{nth_fold}/validation_data.csv', 
+                                f'cross_validation_data/fold_{nth_fold}/validation_data_iterative_0.csv',
+                                f'cross_validation_data/fold_{nth_fold}/validation_data_remaining.csv')
+    get_n_random_rows_and_split(50, 450, [],f'cross_validation_data/fold_{nth_fold}/validation_data_remaining.csv', 
+                                f'cross_validation_data/fold_{nth_fold}/validation_data_iterative_1.csv',
+                                f'cross_validation_data/fold_{nth_fold}/validation_data_final.csv')
+    
+def load_files(nth_fold):
+    copy_folder(f'cross_validation_data/fold_{nth_fold}/iterative_training_data', f'iterative_training_data')
+    copy_folder(f'cross_validation_data/fold_{nth_fold}/results', f'results')
+    copy_file(f'cross_validation_data/fold_{nth_fold}/training_data_ml.csv', f'training_data_ml.csv')
+    copy_file(f'cross_validation_data/fold_{nth_fold}/validation_data_iterative_0.csv', f'validation_data_iterative_0.csv')
+    copy_file(f'cross_validation_data/fold_{nth_fold}/validation_data_iterative_1.csv', f'validation_data_iterative_1.csv')
+    copy_file(f'cross_validation_data/fold_{nth_fold}/validation_data_final.csv', f'validation_data_final.csv')
+    copy_file(f'cross_validation_data/fold_{nth_fold}/test_data.csv', f'test_data.csv')
+
+
+def save_files(nth_fold):
+    copy_folder('predictions', f'cross_validation_data/fold_{nth_fold}/predictions')
+    copy_folder('iterative_training_results', f'cross_validation_data/fold_{nth_fold}/iterative_training_results')
+    copy_folder('predictions_iterative', f'cross_validation_data/fold_{nth_fold}/predictions_iterative')
+
+
+def clean_up_files(nth_fold):
+    # Clear problog_programs folder
+    problog_dir = 'problog_programs'
+    if os.path.exists(problog_dir):
+        shutil.rmtree(problog_dir)
+        os.makedirs(problog_dir)
+        print(f"Cleared {problog_dir} directory")
+    
+
+def run_cross_validation_nth_fold(nth_fold):
+    load_files(nth_fold)
+
+    iterative_training(starting_from = 0, end_at = 10, model="deepseek", exclude_features_success = [], exclude_features_failure = [])
+
+    # Predict validation data
+    from predict import predict
+    from prediction_analysis import get_best_models, get_best_model_clusters, prediction_analysis
+    
+    # Create empty CSV files with headers for validation results
+    validation_results_path = f'cross_validation_data/fold_{nth_fold}/prediction_results_validation.csv'
+    validation_cluster_results_path = f'cross_validation_data/fold_{nth_fold}/prediction_results_cluster_validation.csv'
+    
+    pd.DataFrame(columns=['best_models', 'best_success_thresholds', 'best_failure_thresholds']).to_csv(validation_results_path, index=False)
+    pd.DataFrame(columns=['best_model_clusters', 'best_cluster_success_thresholds', 'best_cluster_failure_thresholds']).to_csv(validation_cluster_results_path, index=False)
+    
+    
+    # Process validation data
+    for i in range(0,11):
+        predict(f'cross_validation_data/fold_{nth_fold}/validation_data_final.csv', iteration_index = i, iterative=False)
+    
+        best_models, best_success_thresholds, best_failure_thresholds = get_best_models([i], num_top_results = 1, f_score_parameter = 0.25)
+        best_model_clusters, best_cluster_success_thresholds, best_cluster_failure_thresholds = get_best_model_clusters([i], num_top_results = 1, f_score_parameter = 0.25)
+
+        # Write validation results for this iteration
+        validation_result = pd.DataFrame([{
+            'best_models': best_models,
+            'best_success_thresholds': best_success_thresholds[i],
+            'best_failure_thresholds': best_failure_thresholds[i],
+        }])
+        validation_result.to_csv(validation_results_path, mode='a', header=False, index=False)
+        
+        validation_cluster_result = pd.DataFrame([{
+            'best_model_clusters': best_model_clusters,
+            'best_cluster_success_thresholds': best_cluster_success_thresholds[i],
+            'best_cluster_failure_thresholds': best_cluster_failure_thresholds[i],
+        }])
+        validation_cluster_result.to_csv(validation_cluster_results_path, mode='a', header=False, index=False)
+        
+        print(f"Completed validation iteration {i}. Pausing for 1 minute to let CPU cool down...")
+        time.sleep(60)  # Pause for 1 minute
+    
+    # Read the validation results to get thresholds for test predictions
+    results_df_validation = pd.read_csv(validation_results_path)
+    results_cluster_df_validation = pd.read_csv(validation_cluster_results_path)
+    
+    best_success_thresholds = results_df_validation['best_success_thresholds'].values
+    best_failure_thresholds = results_df_validation['best_failure_thresholds'].values
+    best_cluster_success_thresholds = results_cluster_df_validation['best_cluster_success_thresholds'].values
+    best_cluster_failure_thresholds = results_cluster_df_validation['best_cluster_failure_thresholds'].values
+
+        # Create empty CSV files with headers for test results
+    test_results_path = f'cross_validation_data/fold_{nth_fold}/prediction_results_test.csv'
+    test_cluster_results_path = f'cross_validation_data/fold_{nth_fold}/prediction_results_cluster_test.csv'
+    
+    pd.DataFrame(columns=['iteration', 'precision', 'accuracy', 'recall', 'f_score_half', 'f_score_quarter', 'true_positives']).to_csv(test_results_path, index=False)
+    pd.DataFrame(columns=['iteration', 'precision', 'accuracy', 'recall', 'f_score_half', 'f_score_quarter', 'true_positives']).to_csv(test_cluster_results_path, index=False)
+    
+    # Process test data
+    for i in range(0,11):
+        predict(f'cross_validation_data/fold_{nth_fold}/test_data.csv', iteration_index=i, iterative=True)
+        precision, accuracy, recall, f_score_half, f_score_quarter, true_positives = prediction_analysis(i, best_success_thresholds[i], best_failure_thresholds[i], iterative=False)
+        precision_cluster, accuracy_cluster, recall_cluster, f_score_half_cluster, f_score_quarter_cluster, true_positives_cluster = prediction_analysis(i, best_cluster_success_thresholds[i], best_cluster_failure_thresholds[i], iterative=False)
+        
+        # Write test results for this iteration
+        test_result = pd.DataFrame([{
+            'iteration': i,
+            'precision': precision,
+            'accuracy': accuracy,
+            'recall': recall,
+            'f_score_half': f_score_half,
+            'f_score_quarter': f_score_quarter,
+            'true_positives': true_positives
+        }])
+        test_result.to_csv(test_results_path, mode='a', header=False, index=False)
+        
+        test_cluster_result = pd.DataFrame([{
+            'iteration': i,
+            'precision': precision_cluster,
+            'accuracy': accuracy_cluster,
+            'recall': recall_cluster,
+            'f_score_half': f_score_half_cluster,
+            'f_score_quarter': f_score_quarter_cluster,
+            'true_positives': true_positives_cluster
+        }])
+        test_cluster_result.to_csv(test_cluster_results_path, mode='a', header=False, index=False)
+        
+        print(f"Completed test iteration {i}. Pausing for 1 minute to let CPU cool down...")
+        time.sleep(120)  # Pause for 1 minute
+
+    save_files(nth_fold)
+    clean_up_files(nth_fold)
+
+if __name__ == "__main__":
+    run_cross_validation()
+    
+
 

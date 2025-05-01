@@ -85,7 +85,7 @@ def analyze_insights_in_groups(csv_path: str = 'founder_insights.csv', model: st
     else:
         from llms.deepseek import get_llm_response
         
-    response = get_llm_response(system_prompt, user_prompt, model = "deepseek-reasoner")
+    response = get_llm_response(system_prompt, user_prompt, model = "deepseek-chat")
     # Write the logical rules to a file
     with open('logical_statements/logical_statements.txt', 'w') as f:
         f.write(response)
@@ -213,7 +213,7 @@ def modify_analysis_based_on_advice(analysis_path: str = 'iterative_training_res
     else:
         from llms.deepseek import get_llm_response
         
-    response = get_llm_response(system_prompt, user_prompt, model = "deepseek-reasoner")
+    response = get_llm_response(system_prompt, user_prompt, model = "deepseek-chat")
 
     with open(f'iterative_training_results/iteration_{iterative_index:03d}_preprocessed.txt', 'w') as f:
         f.write(response)

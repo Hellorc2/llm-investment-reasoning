@@ -1,6 +1,7 @@
 import pandas as pd
 from typing import List
 import os
+import shutil
 
 def get_n_filtered_rows(n: int, columns: List[str], base_csv: str = 'founder_data.csv') -> pd.DataFrame:
     """
@@ -161,13 +162,12 @@ def count_successful_founders(base_csv: str = 'founder_data.csv') -> dict:
         'success_rate': f"{(success_count/total_count)*100:.2f}%"
     }
 
-def split_training_data(successful_rows = 5, unsuccessful_rows = 45):
+def split_training_data(successful_rows = 5, unsuccessful_rows = 45, train_data_csv = 'train_data.csv', data_dir = 'iterative_train_data'):
     # Create iterative_train_data directory if it doesn't exist
-    data_dir = 'iterative_train_data'
     os.makedirs(data_dir, exist_ok=True)
 
     # Read the training data
-    train_data = pd.read_csv('train_data.csv')
+    train_data = pd.read_csv(train_data_csv)
     
     # Split data into successful and unsuccessful
     successful = train_data[train_data['success'] == True]
@@ -286,3 +286,30 @@ def count_successful_in_test_batch(batch_number: int = 0) -> dict:
         'unsuccessful_founders': failure_count,
         'success_rate': f"{(success_count/total_count)*100:.2f}%"
     }
+
+def copy_folder(source_folder, destination_folder):
+    """
+    Copy an entire folder to another location.
+    
+    Args:
+        source_folder (str): Path to the source folder
+        destination_folder (str): Path to the destination folder
+    """
+    try:
+        # Remove destination folder if it exists
+        if os.path.exists(destination_folder):
+            shutil.rmtree(destination_folder)
+        # Copy the folder
+        shutil.copytree(source_folder, destination_folder)
+        print(f"Successfully copied {source_folder} to {destination_folder}")
+    except Exception as e:
+        print(f"Error copying folder: {e}")
+
+def copy_file(source_file, destination_file):
+    """
+    Copy a file to another location.
+    """
+    shutil.copy(source_file, destination_file)
+    print(f"Successfully copied {source_file} to {destination_file}")
+
+

@@ -84,7 +84,7 @@ def evaluate(iterative_index):
     previous_policies = []
     previous_policies_with_metrics = []
 
-    test_batch_file = f'test_data_iterative{iterative_index // 5}.csv'
+    test_batch_file = f'validation_data_iterative_{iterative_index // 5 - 1}.csv'
 
     for i in range(iterative_index - 4,iterative_index + 1):
         with open(f'iterative_training_results/iteration_{i:03d}_preprocessed.txt', 'r') as f:
@@ -96,7 +96,7 @@ def evaluate(iterative_index):
             policy_with_metrics_str = f"""
                 Iteration {i:03d}:
                 Policy:
-                {previous_policies[i-5*(iterative_index // 5)]}"""
+                {previous_policies[i-(iterative_index - 4)]}"""
             
             best_models_description_half, best_success_thresholds_half, best_failure_thresholds_half = get_best_models([i], iterative = True, f_score_parameter = 0.5)
             best_models_description_quarter, best_success_thresholds_quarter, best_failure_thresholds_quarter = get_best_models([i], iterative = True, f_score_parameter = 0.25)
@@ -142,7 +142,7 @@ def evaluate(iterative_index):
     2. avoid focusing on the success and failure thresholds - these don't infer useful information about the policy.
     """
 
-    advice = get_llm_response(system_prompt, user_prompt, model = "deepseek-reasoner")
+    advice = get_llm_response(system_prompt, user_prompt, model = "deepseek-chat")
     print(advice)
 
     # Save original preprocessed statements before any modifications

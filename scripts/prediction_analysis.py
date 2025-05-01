@@ -340,8 +340,3 @@ def get_group_analysis(iterations, success_thresholds, failure_thresholds, major
     f_score_quarter = (1+1/16) / ((1/precision) + (1/16)*(1/recall)) if (precision + recall) > 0 else 0
 
     return accuracy, precision, recall, f_score_half, f_score_quarter, true_positives
-
-
-
-if __name__ == "__main__":
-    best_models_str, best_success_thresholds, best_failure_thresholds = get_best_models(iterations = [0,1,2,3,4,5,6,7,8,9], num_top_results = 1, f_score_parameter = 0.25)

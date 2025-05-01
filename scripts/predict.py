@@ -151,7 +151,7 @@ def predict(csv_file, iteration_index, iterative = False):
     data = pd.read_csv(csv_file)
     
     if not iterative:
-    # Clear prediction.csv before starting predictions
+        # Clear prediction.csv before starting predictions
         import shutil
         try:
             shutil.copyfile(f'predictions/prediction_{iteration_index}.csv', f'predictions/prediction_copy_{iteration_index}.csv')
@@ -164,7 +164,7 @@ def predict(csv_file, iteration_index, iterative = False):
     rows_to_process = list(data.iterrows())
     print(f"Total rows to process: {len(rows_to_process)}")
     
-    # Create a pool of workers
+        # Create a pool of workers
     num_processes = min(cpu_count(), len(rows_to_process))  # Don't use more processes than rows
     print(f"Using {num_processes} processes")
     pool = Pool(processes=num_processes)
@@ -175,50 +175,13 @@ def predict(csv_file, iteration_index, iterative = False):
         results = pool.starmap(predict_success_of_founder, 
                              [(idx, row, iteration_index) 
                               for idx, row in rows_to_process])
-        
-        """
-        # Check results and track rows that need reprocessing
-        rows_to_reprocess = []
-        for result in results:
-            # Parse the result string
-            row_num, success_prob, failure_prob, is_success = result.strip().split(',')
-            success_prob = float(success_prob)
-            failure_prob = float(failure_prob)
-            
-            # If success_prob is 0 and failure_prob is 1, mark for reprocessing
-            if success_prob == 0.0 and failure_prob == 1.0:
-                rows_to_reprocess.append(int(row_num))
-        """
+
                 
     finally:
         # Always close the pool
         pool.close()
         pool.join()
     
-    # Reprocess failed rows if any
-    """
-    if rows_to_reprocess:
-        print(f"\nReprocessing {len(rows_to_reprocess)} rows with zero success probability...")
-        
-        # Process failed rows serially
-        reprocess_results = []
-        for idx in rows_to_reprocess:
-            result = predict_success_of_founder(idx, data.iloc[idx], iteration_index)
-            reprocess_results.append(result)
-            print(f"Reprocessed row {idx}")
-        
-        # Create a mapping of row numbers to new results
-        result_map = {}
-        for result in reprocess_results:
-            row_num, _, _, _ = result.strip().split(',')
-            result_map[int(row_num)] = result
-        
-        # Update the results with reprocessed values
-        for i, result in enumerate(results):
-            row_num = int(result.strip().split(',')[0])
-            if row_num in result_map:
-                results[i] = result_map[row_num]
-    """
 
     # Write results after all processing is complete
     output_file = f'predictions_iterative/prediction_iterative_{iteration_index}.csv' if iterative else f'predictions/prediction_{iteration_index}.csv'
@@ -226,6 +189,7 @@ def predict(csv_file, iteration_index, iterative = False):
     with open(output_file, 'w') as f:
         f.write('row_number,success_prob,failure_prob,is_success\n')
         f.writelines(results)
+
     
     # Write to prediction log with timestamp
     import datetime
@@ -237,7 +201,7 @@ def predict(csv_file, iteration_index, iterative = False):
     # Get current timestamp
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
-    log_filename = f'prediction_log/{csv_file}_iter{iteration_index}_{iterative}_{timestamp}.csv'
+    log_filename = f'prediction_log/{csv_file.split("/")[-1]}_iter{iteration_index}_{iterative}_{timestamp}.csv'
     
     # Write to log file
     print(f"\nWriting {len(results)} results to log file: {log_filename}")
@@ -247,7 +211,3 @@ def predict(csv_file, iteration_index, iterative = False):
     
     print("finished")
 
-
-if __name__ == "__main__":
-    for i in range(0,10):
-        predict(csv_file = 'test_data_validation.csv', iteration_index = i, iterative = False)
