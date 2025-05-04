@@ -10,11 +10,41 @@ from llm_reasoning import logical_statements_preprocess
 from data_utils import *
 import shutil
 import time  # Add time module for sleep function
+import re
 
 # Set display options to show full content
 pd.set_option('display.max_colwidth', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
+
+def read_best_thresholds(fold_num: int, iteration: int):
+    """Read best success and failure thresholds from prediction results file.
+    
+    Args:
+        fold_num: The fold number (0-11)
+        iteration: The iteration number (0-10)
+    
+    Returns:
+        tuple: (best_success_threshold, best_failure_threshold)
+    """
+    results_file = f'cross_validation_data/fold_{fold_num}/prediction_results_validation.csv'
+    
+    try:
+        with open(results_file, 'r') as f:
+            content = f.read()
+            
+        # Find the iteration section
+        iteration_pattern = f"Iteration {iteration} - Top 1 configurations:"
+        iteration_section = content.split(iteration_pattern)[1].split("Iteration")[0]
+        
+        # Extract thresholds using regex
+        success_threshold = float(re.search(r"Success Threshold: ([\d.]+)", iteration_section).group(1))
+        failure_threshold = float(re.search(r"Failure Threshold: ([\d.]+)", iteration_section).group(1))
+        
+        return success_threshold, failure_threshold
+    except Exception as e:
+        print(f"Error reading thresholds for fold {fold_num}, iteration {iteration}: {str(e)}")
+        return None, None
 
 def analyze_single_founder(args):
     index, row, model = args
@@ -293,10 +323,10 @@ def generate_new_insights(iterative_index):
     print(analysis_result)
 
 def run_cross_validation():
-    for i in range(0,12):
+    for i in range(11):
         run_cross_validation_nth_fold(i)
         print(f"==========Fold {i} complete==========")
-        time.sleep(600)
+        time.sleep(200)
 
 def prepare_cross_validation_data():
     for i in range(0,12):
@@ -369,6 +399,7 @@ def load_files(nth_fold):
     copy_file(f'cross_validation_data/fold_{nth_fold}/validation_data_iterative_1.csv', f'validation_data_iterative_1.csv')
     copy_file(f'cross_validation_data/fold_{nth_fold}/validation_data_final.csv', f'validation_data_final.csv')
     copy_file(f'cross_validation_data/fold_{nth_fold}/test_data.csv', f'test_data.csv')
+    copy_folder(f'cross_validation_data/fold_{nth_fold}/iterative_training_results', f'iterative_training_results')
 
 
 def save_files(nth_fold):
@@ -389,22 +420,33 @@ def clean_up_files(nth_fold):
 def run_cross_validation_nth_fold(nth_fold):
     load_files(nth_fold)
 
-    iterative_training(starting_from = 0, end_at = 10, model="deepseek", exclude_features_success = [], exclude_features_failure = [])
-
+    
     # Predict validation data
     from predict import predict
     from prediction_analysis import get_best_models, get_best_model_clusters, prediction_analysis
-    
-    # Create empty CSV files with headers for validation results
+
+    # Create empty CSV files with headers for validation results if they don't exist
     validation_results_path = f'cross_validation_data/fold_{nth_fold}/prediction_results_validation.csv'
     validation_cluster_results_path = f'cross_validation_data/fold_{nth_fold}/prediction_results_cluster_validation.csv'
     
-    pd.DataFrame(columns=['best_models', 'best_success_thresholds', 'best_failure_thresholds']).to_csv(validation_results_path, index=False)
-    pd.DataFrame(columns=['best_model_clusters', 'best_cluster_success_thresholds', 'best_cluster_failure_thresholds']).to_csv(validation_cluster_results_path, index=False)
+    if not os.path.exists(validation_results_path):
+        pd.DataFrame(columns=['best_models', 'best_success_thresholds', 'best_failure_thresholds']).to_csv(validation_results_path, index=False)
+    if not os.path.exists(validation_cluster_results_path):
+        pd.DataFrame(columns=['best_model_clusters', 'best_cluster_success_thresholds', 'best_cluster_failure_thresholds']).to_csv(validation_cluster_results_path, index=False)
+
+            # Create empty CSV files with headers for test results if they don't exist
+    test_results_path = f'cross_validation_data/fold_{nth_fold}/prediction_results_test.csv'
+    test_cluster_results_path = f'cross_validation_data/fold_{nth_fold}/prediction_results_cluster_test.csv'
+    
+    if not os.path.exists(test_results_path):
+        pd.DataFrame(columns=['iteration', 'precision', 'accuracy', 'recall', 'f_score_half', 'f_score_quarter', 'true_positives']).to_csv(test_results_path, index=False)
+    if not os.path.exists(test_cluster_results_path):
+        pd.DataFrame(columns=['iteration', 'precision', 'accuracy', 'recall', 'f_score_half', 'f_score_quarter', 'true_positives']).to_csv(test_cluster_results_path, index=False)
+
     
     
     # Process validation data
-    for i in range(0,11):
+    for i in [0,5,6,10]:
         predict(f'cross_validation_data/fold_{nth_fold}/validation_data_final.csv', iteration_index = i, iterative=False)
     
         best_models, best_success_thresholds, best_failure_thresholds = get_best_models([i], num_top_results = 1, f_score_parameter = 0.25)
@@ -426,27 +468,9 @@ def run_cross_validation_nth_fold(nth_fold):
         validation_cluster_result.to_csv(validation_cluster_results_path, mode='a', header=False, index=False)
         
         print(f"Completed validation iteration {i}. Pausing for 1 minute to let CPU cool down...")
-        time.sleep(60)  # Pause for 1 minute
-    
-    # Read the validation results to get thresholds for test predictions
-    results_df_validation = pd.read_csv(validation_results_path)
-    results_cluster_df_validation = pd.read_csv(validation_cluster_results_path)
-    
-    best_success_thresholds = results_df_validation['best_success_thresholds'].values
-    best_failure_thresholds = results_df_validation['best_failure_thresholds'].values
-    best_cluster_success_thresholds = results_cluster_df_validation['best_cluster_success_thresholds'].values
-    best_cluster_failure_thresholds = results_cluster_df_validation['best_cluster_failure_thresholds'].values
+        time.sleep(180)  # Pause for 1 minute
 
-        # Create empty CSV files with headers for test results
-    test_results_path = f'cross_validation_data/fold_{nth_fold}/prediction_results_test.csv'
-    test_cluster_results_path = f'cross_validation_data/fold_{nth_fold}/prediction_results_cluster_test.csv'
-    
-    pd.DataFrame(columns=['iteration', 'precision', 'accuracy', 'recall', 'f_score_half', 'f_score_quarter', 'true_positives']).to_csv(test_results_path, index=False)
-    pd.DataFrame(columns=['iteration', 'precision', 'accuracy', 'recall', 'f_score_half', 'f_score_quarter', 'true_positives']).to_csv(test_cluster_results_path, index=False)
-    
-    # Process test data
-    for i in range(0,11):
-        predict(f'cross_validation_data/fold_{nth_fold}/test_data.csv', iteration_index=i, iterative=True)
+        predict(f'cross_validation_data/fold_{nth_fold}/test_data.csv', iteration_index=i, iterative=False)
         precision, accuracy, recall, f_score_half, f_score_quarter, true_positives = prediction_analysis(i, best_success_thresholds[i], best_failure_thresholds[i], iterative=False)
         precision_cluster, accuracy_cluster, recall_cluster, f_score_half_cluster, f_score_quarter_cluster, true_positives_cluster = prediction_analysis(i, best_cluster_success_thresholds[i], best_cluster_failure_thresholds[i], iterative=False)
         
@@ -473,14 +497,45 @@ def run_cross_validation_nth_fold(nth_fold):
         }])
         test_cluster_result.to_csv(test_cluster_results_path, mode='a', header=False, index=False)
         
-        print(f"Completed test iteration {i}. Pausing for 1 minute to let CPU cool down...")
-        time.sleep(120)  # Pause for 1 minute
+        print(f"Completed test iteration {i}. Pausing for 2 minutes to let CPU cool down...")
+        time.sleep(180)  # Pause for 2 minute
+
 
     save_files(nth_fold)
     clean_up_files(nth_fold)
 
-if __name__ == "__main__":
-    run_cross_validation()
+
+def correct_test_statistics():
+    from prediction_analysis import get_best_models, get_best_model_clusters, prediction_analysis
     
+    for fold in range(1,6):
+        # Create a list to store results for this fold
+        fold_results = []
+        
+        for i in [0, 5,6,10]:
+            best_success_thresholds, best_failure_thresholds = read_best_thresholds(fold, i)
+            precision, accuracy, recall, f_score_half, f_score_quarter, true_positives = prediction_analysis(i, best_success_thresholds, best_failure_thresholds, iterative=True)
+            
+            # Store results for this iteration
+            fold_results.append({
+                'iteration': i,
+                'precision': precision,
+                'accuracy': accuracy,
+                'recall': recall,
+                'f_score_half': f_score_half,
+                'f_score_quarter': f_score_quarter,
+                'true_positives': true_positives,
+                'success_threshold': best_success_thresholds,
+                'failure_threshold': best_failure_thresholds
+            })
+        
+        # Convert results to DataFrame
+        results_df = pd.DataFrame(fold_results)
+        
+        # Save to CSV for this fold
+        output_file = f'cross_validation_data/fold_{fold}/prediction_test_correct.csv'
+        results_df.to_csv(output_file, index=False)
+        print(f"Results for fold {fold} saved to {output_file}")
 
-
+if __name__ == "__main__":
+    run_cross_validation_nth_fold(11)

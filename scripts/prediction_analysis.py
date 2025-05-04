@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from matplotlib.colors import LinearSegmentedColormap
 
 def prediction_analysis(iteration_index, threshold_success = 0.3, threshold_failure = 1, iterative = False):
     if not iterative:
@@ -116,9 +117,54 @@ def get_best_models(iterations, success_thresholds = np.arange(0.01, 1, 0.01),
 
     return best_models_str, best_success_thresholds, best_failure_thresholds
 
+def plot_precision_analysis_iteration(iteration, failure_thresholds = [0.999, 0.9999, 0.99999], iterative = False):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+    from matplotlib.colors import LinearSegmentedColormap
 
+    # Store results for plotting
+    results = []
+    for j in failure_thresholds:
+        for i in np.arange(0.05, 0.95, 0.05):
+            precision, accuracy, recall, f_score_half, f_score_quarter, true_positives = prediction_analysis(iteration, i, j, iterative)
+            results.append({
+                'threshold_success': i,
+                'threshold_failure': j,
+                'precision': precision
+            })
 
+    # Convert results to DataFrame for easier plotting
+    results_df = pd.DataFrame(results)
 
+    # Create a single plot
+    plt.figure(figsize=(12, 6))
+
+    # Create a color map from blue to red
+    colors = ['#0000FF', '#800080', '#FF0000']  # Blue to Purple to Red
+    n_colors = len(failure_thresholds)
+    custom_cmap = LinearSegmentedColormap.from_list('custom', colors, N=n_colors)
+    colors = [custom_cmap(i) for i in np.linspace(0, 1, n_colors)]
+
+    # Plot a line for each failure threshold
+    for idx, j in enumerate(failure_thresholds):
+        threshold_data = results_df[results_df['threshold_failure'] == j]
+        plt.plot(threshold_data['threshold_success'], threshold_data['precision'],
+                label=f'Failure Threshold = {j}',
+                color=colors[idx],
+                marker='o',
+                linewidth=2)
+
+    plt.xlabel('Success Threshold')
+    plt.ylabel('Precision')
+    plt.title(f'Precision vs Success Threshold (Iteration {iteration})')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    # Save the plot
+    plt.savefig(f'precision_analysis_iteration_{iteration}.png')
+    plt.close()
 
 def plot_precision_analysis(iterations, failure_thresholds = [0.999, 0.9999, 0.99999], iterative = False):
     import matplotlib.pyplot as plt

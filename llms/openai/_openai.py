@@ -5,7 +5,7 @@ from core import settings
 
 openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-def get_llm_response(system_prompt: str, user_prompt: str) -> str:
+def get_llm_response(system_prompt: str, user_prompt: str, temperature: float = 1.0) -> str:
     """
     Get a response from the OpenAI API.
     
@@ -22,6 +22,7 @@ def get_llm_response(system_prompt: str, user_prompt: str) -> str:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
+        temperature=temperature,
         stream=False
     )
     return response.choices[0].message.content
